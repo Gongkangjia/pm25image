@@ -2,6 +2,13 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.DS_Store
+
+#User
+logs/
+excel/
+rt/
+config.py
 
 # C extensions
 *.so
