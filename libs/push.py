@@ -1,5 +1,5 @@
 import abc
-from .config import CORPID, CORPSECRET, AGENTID
+from .config import CORPID, CORPSECRET, AGENTID, USER, HOST, PASSWORD
 import requests
 from loguru import logger
 import yagmail
@@ -86,9 +86,9 @@ class QiyeWechatPush(Push):
 class EmailPush(Push):
     def __init__(self):
         super().__init__()
-        self.yag = yagmail.SMTP(user="noreply@kjgong.cn",
-                                password="RWeuK9CF2r",
-                                host='smtp.exmail.qq.com')
+        self.yag = yagmail.SMTP(user=USER,
+                                password=PASSWORD,
+                                host=HOST)
 
     def mail(self, subject, content=None, files=None) -> None:
         logger.info("开始发送邮件 =>{},{},{}", subject, content, files)
