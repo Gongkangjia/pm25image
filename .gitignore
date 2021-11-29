@@ -5,9 +5,9 @@ __pycache__/
 .DS_Store
 
 #User
-logs/
-excel/
-rt/
+logs/*
+excel/*
+rt/*
 config.py
 
 # C extensions

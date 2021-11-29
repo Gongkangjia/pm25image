@@ -3,6 +3,7 @@ from .config import CORPID, CORPSECRET, AGENTID, USER, HOST, PASSWORD
 import requests
 from loguru import logger
 import yagmail
+import shortuuid
 from pathlib import Path
 
 
@@ -10,6 +11,7 @@ class Push(metaclass=abc.ABCMeta):
     def __init__(self):
         self.rt = Path(__file__).parent.parent.absolute()/"rt"
         self.image_path = self.rt / Path("result.png")
+        self.datetime_tag = self.rt / "datetime.tag"
 
     @abc.abstractmethod
     def run(self):
@@ -40,10 +42,11 @@ class QiyeWechatPush(Push):
 
     def upload(self, filetype="image"):
         url = 'https://qyapi.weixin.qq.com/cgi-bin/media/upload'
+        datetime = self.datetime_tag.read_text()
+        filename = f"{datetime.replace(' ','T')}_{shortuuid.uuid()}.png"
 
         params = {"access_token": self.access_token, "type": filetype}
-
-        data = {"file": self.image_path.read_bytes()}
+        data = {"file": (filename,self.image_path.read_bytes())}
 
         upload_res = requests.post(url, files=data, params=params).json()
         logger.info("上传成功=>{}", upload_res)
