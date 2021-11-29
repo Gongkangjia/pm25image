@@ -1,3 +1,4 @@
+#!/home/kjgong/miniconda3/bin/python3
 from loguru import logger
 from pathlib import Path
 import os
@@ -33,10 +34,12 @@ def run(force=False):
 
 @click.command()
 @click.option("-f", "--force",is_flag=True,help='Run force')
-def main(force):
+@click.option("-d", "--daemon",is_flag=True,help='Run daemon')
+def main(force,daemon):
     if force:
         run(force)
-    else:
+        return
+    if daemon:
         while True:
             now =  arrow.now()
             logger.info("现在的时间=>{}",now.format())
@@ -47,6 +50,8 @@ def main(force):
             time.sleep(delay)
             logger.info("开始执行=>{}",now)
             run()
+    else:
+        run()
 
 if __name__ == "__main__":
     main()

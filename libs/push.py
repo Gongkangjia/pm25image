@@ -120,7 +120,7 @@ class EmailPush(Push):
         contents.append(yagmail.inline(str(self.image_path)))
         footer = """
         数据来源:南京市环境空气质量自动监测平台
-        ----——————————————————
+        ---------------------------------
         龚康佳
         南京信息工程大学
         环境科学与工程学院
