@@ -1,0 +1,11 @@
+loguru
+arrow
+click
+requests
+openpyxy
+numpy
+pandas
+pillow
+lxml
+yagmail
+shortuuid
