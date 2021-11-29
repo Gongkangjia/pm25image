@@ -9,16 +9,16 @@ from loguru import logger
 class DrawImage:
     def __init__(self):
         self.root = Path(__file__).parent.parent.absolute()
-        self.data_html_path = self.root/ "rt" / Path("data.html")
-        self.image_path = self.root/ "rt" / Path("result.png")
+        self.all_data_path = self.root/ "rt"/ Path("all_data.csv")
         self.datetime_tag_path = self.root/ "rt"  / Path("datetime.tag")
+        self.image_path = self.root/ "rt" / f"{self.datetime_tag_path.read_text()}.png"
 
-        self.columns_width = [850, 850, 1200, 1200, 1200]
-        self.row_height = [180, 620, *[180]*14]
+        self.columns_width = np.array([8,12,10,10,10,10,10,10])*60
+        self.row_height = [180, 360,180,*[180]*14]
         self.fonesize = 140
         self.font = ImageFont.truetype(font=str(self.root/'static/kjgong.ttf'), size=self.fonesize)
         self.linewidth = 6
-        self.spacing = self.fonesize*0.5
+        self.spacing = self.fonesize*0.1
         self.start = (10, 10)
 
     def create_figure(self):
@@ -54,69 +54,57 @@ class DrawImage:
         h = sum(self.row_height[row_start:row_end+1])
         return x, y, w, h
 
-    def get_dataframe(self):
-        logger.info("读取html=>{}",self.data_html_path)
-        df = pd.read_html(self.data_html_path, encoding="utf-8",attrs={'id': 'containerTB'})[0]
-        df = df[["序号", "站点名称", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)"]]
-        df = df.rename({"序号": "ID",
-                        "站点名称": "NAME",
-                        "PM2.5(mg/m3)": "PM25",
-                        "PM10(mg/m3)": "PM10",
-                        "NO2(mg/m3)": "NO2"}, axis=1)
-        df = df.set_index("NAME")
-        df = df.rename({"六合雄州": "雄州", "溧水永阳": "永阳",
-                       "高淳老职中": "老职中", "江宁彩虹桥": "彩虹桥"})
-        sites = ['玄武湖', '瑞金路', '奥体中心',  '草场门', '山西路', '迈皋桥', '仙林大学城',
-                 '中华门', '彩虹桥', '浦口', '雄州', '永阳', '老职中']
-        df = df.loc[sites, :]
-
-        df["PM25"] = df["PM25"]*1000
-        df["PM10"] = df["PM10"]*1000
-        df["NO2"] = df["NO2"]*1000
-        df = df.reset_index()
-        df["ID"] = df.index+1
-        return df
-
     def draw_data(self):
         self.create_figure()
         logger.info("正在绘制表头")
-        self.draw_rec_text((0, 0, 1, 0), "序号")
-        self.draw_rec_text((0, 1, 1, 1), "点位")
-        self.draw_rec_text((0, 2, 0, 4), self.datetime_tag_path.read_text())
-        self.draw_rec_text((1, 2), ["PM2.5", "（微克/立方米）"])
-        self.draw_rec_text((1, 3), ["PM10", "（微克/立方米）"])
-        self.draw_rec_text((1, 4), ["NO2", "（微克/立方米）"])
-        df = self.get_dataframe()
-        for i,d in df.iterrows():
-            self.draw_rec_text((d.ID+1,0),str(d.ID))
-            self.draw_rec_text((d.ID+1,1),d.NAME)
+        self.draw_rec_text((0, 0, 2, 0), "序号")
+        self.draw_rec_text((0, 1, 2, 1), "点位")
+        datetime = arrow.get(self.datetime_tag_path.read_text(),"YYYY-MM-DDTHH")
+        self.draw_rec_text((0, 2, 0, 7), datetime.format("YYYY-MM-DD HH:mm"))
 
-        self.draw_rec_text((15,0,15,1), "全市")
+        self.draw_rec_text((1, 2,1,3), ["PM2.5", "（微克/立方米）"])
+        self.draw_rec_text((2, 2), "实时")
+        self.draw_rec_text((2, 3), "当日累计")
+
+        self.draw_rec_text((1, 4,1,5), ["PM10", "（微克/立方米）"])
+        self.draw_rec_text((2, 4), "实时")
+        self.draw_rec_text((2, 5), "当日累计")
+
+        self.draw_rec_text((1, 6,1,7), ["NO2", "（微克/立方米）"])
+        self.draw_rec_text((2,6), "实时")
+        self.draw_rec_text((2, 7), "当日累计")
+
+        df= pd.read_csv(self.all_data_path)
+
+        for i,d in df.iterrows():
+            self.draw_rec_text((i+3,0),str(i+1))
+            self.draw_rec_text((i+3,1),d["STATION_NAME"])
+        self.draw_rec_text((16,0,16,1), "全市")
 
         logger.info("正在绘制数据列")
-        for species_index,species in enumerate(["PM25","PM10","NO2"]):
+        for species_index,species in enumerate(["PM25","PM25_CUM","PM10","PM10_CUM","NO2","NO2_CUM"]):
             d = df[species]
             nl = d.isin(d.nlargest(3))
             nl.name = "NL"
             d.name = "VALUE"
             tmp_df = pd.concat([d,nl],axis=1)
             #全市
-            self.draw_rec_text((15,species_index+2),str(round(d.mean())))
+            self.draw_rec_text((16,species_index+2),str(round(d.mean())))
 
             for index,species_value in tmp_df.iterrows():
                 t = "-" if np.isnan(species_value.VALUE) else str(round(species_value.VALUE))
                 fill = "red" if species_value.NL else "black"
-                self.draw_rec_text((index+2,species_index+2),t,fill=fill)
+                self.draw_rec_text((index+3,species_index+2),t,fill=fill)
 
     def save(self):
         logger.info("正在保存图片=>{}",self.image_path)
-        self.image = self.image.resize((2000,int(self.image.size[1]/self.image.size[0]*2000)),Image.ANTIALIAS)
+        self.image = self.image.resize((1500,int(self.image.size[1]/self.image.size[0]*1500)),Image.ANTIALIAS)
+        self.image = self.image.quantize(colors=16, method=2)
         self.image.save(self.image_path)
 
     def run(self):
         self.draw_data()
         self.save()
-
 
 if __name__ == "__main__":
     d = DrawImage()

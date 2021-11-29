@@ -8,17 +8,22 @@ import json
 from lxml import etree
 from pathlib import Path
 from loguru import logger
+import io
 
 from .vc import VC
+from .config import STATIONS
 
 
 class Crawler:
     def __init__(self) -> None:
-        self.rt = Path(__file__).parent.parent.absolute()/ "rt"
+        self.rt = Path(__file__).parent.parent.absolute() / "rt"
         self.cookies_path = self.rt / Path(".cookies.json")
         self.validate_code_path = self.rt / Path("vc.png")
-        self.data_html_path = self.rt / Path("data.html")
+        self.rt_html_apth = self.rt / Path("rt_data.html")
         self.datetime_tag_path = self.rt / Path("datetime.tag")
+        self.rt_data_path = self.rt / Path("rt_data.csv")
+        self.daily_data_path = self.rt / Path("daily_data.csv")
+        self.all_data_path = self.rt / Path("all_data.csv")
 
         self.init_session()
         self.load_session()
@@ -133,14 +138,14 @@ class Crawler:
             push = EmailPush()
             push.mail("【空气质量速报】告警！！！", content="十次登录失败,请及时处理...")
 
-    def get_data(self):
+    def get_rt_data(self):
         url = 'http://112.25.188.53:12080/njeqs/DataQuery/AirStationLastHourDataStat.aspx'
         params = {
             'strStationIds': 'Station.id in(2001,2002,2003,2004,2006,2007,2008,2009,2010,2016,2022,2024,2036)',
             'ftid': '578'
         }
         logger.info("开始获取数据,请求url为=>{}", url)
-        response = self.session.post(url, params=params)
+        response = self.session.post(url, params=params,timeout=60)
         logger.info("请求结果长度为=>{}", len(response.text))
         # 判断请求数据是否正常
         if "loginBtn" in response.text:
@@ -149,22 +154,31 @@ class Crawler:
             return self.get_data()
         else:
             logger.info("获取数据成功可用")
-            self.data_html_path.write_text(response.text)
-            logger.info("请求结果写入文件成功=>{}", self.data_html_path)
+            self.rt_html_apth.write_text(response.text)
+            logger.info("请求结果写入文件成功=>{}", self.rt_html_apth)
 
     def get_datetime(self):
-        html = etree.HTML(self.data_html_path.read_text())
+        html = etree.HTML(self.rt_html_apth.read_text())
         datetime = html.xpath("*//input[@id='strStartTime']/@value")
         datetime = arrow.get(datetime[0]).shift(hours=1)
-        datetime = datetime.format("YYYY-MM-DD HH:mm")
         return datetime
 
-    def get_dataframe(self):
-        df = pd.read_html(self.data_html_path, encoding="utf-8",
+    def is_update(self):
+        self.get_rt_data()
+        new = self.get_datetime().format("YYYY-MM-DDTHH")
+
+        if self.datetime_tag_path.is_file():
+            last = self.datetime_tag_path.read_text()
+        else:
+            last = None
+        return new != last
+
+    def save_rt_data(self):
+        df = pd.read_html(self.rt_html_apth, encoding="utf-8",
                           attrs={'id': 'containerTB'})[0]
 
         df = df[["序号", "站点名称", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)"]]
-        df = df.rename({"序号": "ID", "站点名称": "NAME", "PM2.5(mg/m3)": "PM25",
+        df = df.rename({"序号": "ID", "站点名称": "STATION_NAME", "PM2.5(mg/m3)": "PM25",
                         "PM10(mg/m3)": "PM10", "NO2(mg/m3)": "NO2"}, axis=1)
 
         df.set_index("ID", inplace=True)
@@ -172,47 +186,92 @@ class Crawler:
         df["PM10"] = df["PM10"]*1000
         df["NO2"] = df["NO2"]*1000
 
-        df = df.set_index("NAME")
+        df = df.set_index("STATION_NAME")
 
         df = df.rename({"六合雄州": "雄州", "溧水永阳": "永阳",
                        "高淳老职中": "老职中", "江宁彩虹桥": "彩虹桥"})
         sites = ['玄武湖', '瑞金路', '奥体中心',  '草场门', '山西路', '迈皋桥', '仙林大学城',
                  '中华门', '彩虹桥', '浦口', '雄州', '永阳', '老职中']
-        return df.loc[sites, :]
+        df = df.loc[sites, :]
+        df.to_csv(self.rt_data_path,float_format="%.0f")
+        logger.info("rt_data写入成功=>{}",self.rt_data_path)
+        return True
+
+    def save_daily_data(self):
+        dfs = []
+        for station_name,station_id in STATIONS.items():
+            logger.info("获取站点当日数据=>{},{}",station_name,station_id)
+            station_df = self.get_station_data(station_id,station_name)
+            dfs.append(station_df)
+
+        logger.info("正在合并站点数据")
+        all_station = pd.concat(dfs)
+        daily_mean = all_station.groupby("STATION_NAME").mean()
+        daily_mean.to_csv(self.daily_data_path,float_format="%.0f")
+        logger.info("daily_data写入成功=>{}",self.daily_data_path)
+
+    def get_station_data(self, station_id,station_name):
+        url = "http://112.25.188.53:12080/njeqs/RTDataShow/AirHISDataShow_RTDB.aspx"
+        params = {
+            'strStationID': str(station_id)
+        }
+        logger.info("请求站点数据...")
+        station_res = self.session.get(url, params=params)
+        # (self.rt / Path(f"station_{station_id}.html")).write_text(station_res.text)
+        df = pd.read_html(io.StringIO(station_res.text),
+                        encoding="utf-8", attrs={'id': 'tblContainer'})[0]
+        df = df.loc[:,["时间","PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)"]].iloc[:-3]
+        df = df.rename({"时间": "DATETIME",
+                        "PM2.5(mg/m3)": "PM25_CUM",
+                        "PM10(mg/m3)": "PM10_CUM",
+                        "NO2(mg/m3)": "NO2_CUM"}, axis=1)
+        df = df.set_index("DATETIME")
+        df.index = pd.to_datetime(df.index,format="%Y-%m-%d %H:%M",errors="ignore")
+        df = df.loc[df.index.minute == 0,:]
+        df = df * 1000
+        df["STATION_NAME"] = station_name
+        logger.info("成功获取...")
+        return df
 
     def write_excel(self):
-        df = self.get_dataframe()
-        datetime = self.get_datetime()
+        #先合并数据
+        rt_df = pd.read_csv(self.rt_data_path,index_col=0)
+        daily_df = pd.read_csv(self.daily_data_path,index_col=0)
+        all_df = pd.concat([rt_df,daily_df],axis=1)
+        all_df = all_df[["PM25","PM25_CUM","PM10","PM10_CUM","NO2","NO2_CUM"]]
 
+        datetime = self.get_datetime()
         wb = openpyxl.load_workbook(f"static/template.xlsx")
         ws = wb["DATA"]
 
-        ws["C1"].value = self.get_datetime()
+        ws["C1"].value = self.get_datetime().format("YYYY-MM-DD HH:mm")
 
-        strdf = df.applymap(lambda x: int(x) if not np.isnan(x) else "-")
-        for i, row in enumerate(ws["C3:E15"]):
+        strdf = all_df.applymap(lambda x: int(x) if not np.isnan(x) else "-")
+        for i, row in enumerate(ws["C4:H16"]):
             for j, col in enumerate(row):
                 col.value = strdf.iloc[i, j]
-        wb.save(f"excel/{datetime.replace(' ', 'T')}.xlsx")
+        excel_path = f"excel/{datetime.format('YYYY-MM-DDTHH')}.xlsx"
+        logger.info("保存数据至=>{}",excel_path)
+        wb.save(excel_path)
+
+        #保存数据去画图
+        all_df.to_csv(self.all_data_path,float_format="%.0f")
 
     def run(self):
-        self.get_data()
-        new = self.get_datetime()
-
-        if self.datetime_tag_path.is_file():
-            last = self.datetime_tag_path.read_text()
+        if self.is_update():
+            datetime = self.get_datetime()
+            logger.info("发现新数据=>{}",datetime)
+            self.save_rt_data()
+            self.save_daily_data()
+            self.write_excel()
+            self.datetime_tag_path.write_text(datetime.format("YYYY-MM-DDTHH"))
+            return True
         else:
-            last = None
-            
-        if  new == last:
             logger.info("还没有新数据")
             return False
-        else:
-            self.write_excel()
-            self.datetime_tag_path.write_text(new)
-            return True
 
 if __name__ == "__main__":
     crawer = Crawler()
     crawer.run()
-    logger.info(crawer.get_dataframe())
+    # crawer.get_all_station()
+    # logger.info(crawer.get_dataframe())

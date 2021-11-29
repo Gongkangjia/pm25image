@@ -22,12 +22,10 @@ def run(force=False):
     if crawler.run() or force:
         d = DrawImage()
         d.run()
-
         PUSHCLASS = [
             QiyeWechatPush,
             EmailPush
             ]
-
         for push in PUSHCLASS:
             pusher = push()
             pusher.run()

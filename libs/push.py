@@ -4,14 +4,18 @@ import requests
 from loguru import logger
 import yagmail
 import shortuuid
+import arrow
 from pathlib import Path
 
 
 class Push(metaclass=abc.ABCMeta):
     def __init__(self):
         self.rt = Path(__file__).parent.parent.absolute()/"rt"
-        self.image_path = self.rt / Path("result.png")
         self.datetime_tag = self.rt / "datetime.tag"
+        self.filename = self.datetime_tag.read_text()
+        self.datetime = arrow.get(self.filename, "YYYY-MM-DDTHH")
+        self.image_path = self.rt / f"{self.filename}.png"
+        self.excel_path = Path(__file__).parent.parent.absolute()/ "excel" /f"{self.filename}.xlsx"
 
     @abc.abstractmethod
     def run(self):
@@ -42,11 +46,11 @@ class QiyeWechatPush(Push):
 
     def upload(self, filetype="image"):
         url = 'https://qyapi.weixin.qq.com/cgi-bin/media/upload'
-        datetime = self.datetime_tag.read_text()
-        filename = f"{datetime.replace(' ','T')}_{shortuuid.uuid()}.png"
+
+        filename = f"{self.filename}_{shortuuid.uuid()}.png"
 
         params = {"access_token": self.access_token, "type": filetype}
-        data = {"file": (filename,self.image_path.read_bytes())}
+        data = {"file": (filename, self.image_path.read_bytes())}
 
         upload_res = requests.post(url, files=data, params=params).json()
         logger.info("上传成功=>{}", upload_res)
@@ -93,16 +97,38 @@ class EmailPush(Push):
                                 password=PASSWORD,
                                 host=HOST)
 
-    def mail(self, subject, content=None, files=None) -> None:
-        logger.info("开始发送邮件 =>{},{},{}", subject, content, files)
-        sta = self.yag.send(["gongkangjia@qq.com"], subject, content, files)
+    def mail(self, subject, contents=None, attachments=None) -> None:
+
+        logger.info("开始发送邮件 =>{},{},{}", subject, contents, attachments)
+
+        sta = self.yag.send(to=[
+            "njhbjwkc@163.com"
+        ],
+            cc="gongkangjia@gmail.com",
+            subject=subject,
+            contents=contents,
+            attachments=attachments)
+
         if sta is not False:
             logger.info("邮件发送成功")
         else:
             logger.error("邮件发送不成功 => {}", sta)
 
     def run(self):
-        self.mail("【空气质量速报】", files=self.image_path)
+        dt = self.datetime.format('MM月DD日HH时')
+        contents = []
+        contents.append(yagmail.inline(str(self.image_path)))
+        footer = """
+        数据来源:南京市环境空气质量自动监测平台
+        ----——————————————————
+        龚康佳
+        南京信息工程大学
+        环境科学与工程学院
+        kjgong@nuist.edu.cn; gongkangjia@gmail.com
+        """
+        contents.append(footer)
+
+        self.mail(f"【空气质量速报】{dt}", contents=contents,attachments=[str(self.image_path),str(self.excel_path)])
 
 
 if __name__ == "__main__":
