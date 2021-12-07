@@ -4,6 +4,7 @@ import openpyxl
 import arrow
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter
 import json
 from lxml import etree
 from pathlib import Path
@@ -39,6 +40,8 @@ class Crawler:
             'Referer': 'http://112.25.188.53:12080/njeqs/mainFrame.aspx',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
         }
+        self.session.mount('http://', HTTPAdapter(max_retries=3))
+        self.session.mount('https://', HTTPAdapter(max_retries=3))
 
     def get_login_params(self):
         url = 'http://112.25.188.53:12080/njeqs/Default.aspx'
@@ -209,6 +212,89 @@ class Crawler:
         daily_mean = all_station.groupby("STATION_NAME").mean()
         daily_mean.to_csv(self.daily_data_path,float_format="%.0f")
         logger.info("daily_data写入成功=>{}",self.daily_data_path)
+   
+    def save_daily_data2(self):
+        #首先获取请求参数
+        url = 'http://112.25.188.53:12080/njeqs/DataQuery/AirStationDataStat.aspx'
+        params = (
+            ('strDimMonOptTypeID', '6'),
+            ('strTimeGranularity', '20'),
+            ('ftid', '603'),
+        )
+        data = {
+        'ddlStationID': '2001',
+        }
+        response = self.session.post(url,params=params, data=data)
+        html = etree.HTML(response.text)
+
+        __VIEWSTATE = html.xpath("*//input[@id='__VIEWSTATE']/@value")
+        __VIEWSTATEGENERATOR = html.xpath(
+            "*//input[@id='__VIEWSTATEGENERATOR']/@value")
+        __EVENTVALIDATION = html.xpath(
+            "*//input[@id='__EVENTVALIDATION']/@value")
+
+        if __VIEWSTATE and __VIEWSTATEGENERATOR and __EVENTVALIDATION:
+            data_params = {
+                "__VIEWSTATE": __VIEWSTATE[0],
+                "__VIEWSTATEGENERATOR": __VIEWSTATEGENERATOR[0],
+                "__EVENTVALIDATION": __EVENTVALIDATION[0]
+            }
+            logger.info("获取站点请求参数成功=>{}",data_params)
+        else:
+            logger.error("获取站点请求参数失败=>{}",response.text)
+        #开始遍历站点
+        dfs = []
+        for station_name,station_id in STATIONS.items():
+            logger.info("获取站点当日数据=>{},{}",station_name,station_id)
+            start  = arrow.now().floor("day").format("YYYY-MM-DD HH:00")
+            end  = arrow.now().floor("day").shift(days=1).format("YYYY-MM-DD HH:00")
+            logger.info(start,end)
+            data =   {
+            **data_params,
+            'ddlStationID': station_id,
+            'strAuditData': '',
+            'strAuditButton': '',
+            'ddlDataType': '2',
+            'strStartTime': start,
+            'strEndTime': end,
+            'btnQuery': '\u67E5 \u8BE2'
+            }
+
+
+            try:
+                response = self.session.post('http://112.25.188.53:12080/njeqs/DataQuery/AirStationDataStat.aspx', params=params, data=data,timeout=10)
+            except requests.exceptions.RequestException as e:
+                logger.error("重试3次后仍未成功=>{}",e)
+                return False
+            
+            html = etree.HTML(response.text)
+
+            df = pd.read_html(io.StringIO(response.text),
+                                    encoding="utf-8", attrs={'id': 'tblContainer'})[0]
+            df = df.loc[:,["时间","PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)"]]
+            df = df.rename({"时间": "DATETIME",
+                            "PM2.5(mg/m3)": "PM25_CUM",
+                            "PM10(mg/m3)": "PM10_CUM",
+                            "NO2(mg/m3)": "NO2_CUM"
+                            }, axis=1)
+            df = df.set_index("DATETIME")
+            df.index = pd.to_datetime(df.index,format="%Y-%m-%d %H:%M",
+                            errors="coerce"
+                )
+
+            df = df.loc[df.index.notna()]
+            df = df.shift(periods=1, freq="H")
+            #无效值剔除
+            df = df.applymap(lambda x :float(x)*1000 if float(x)>0 else np.nan)
+
+            df["STATION_NAME"]=station_name
+            dfs.append(df)
+
+        logger.info("正在合并站点数据")
+        all_station = pd.concat(dfs)
+        daily_mean = all_station.groupby("STATION_NAME").mean()
+        daily_mean.to_csv(self.daily_data_path,float_format="%.0f")
+        logger.info("daily_data写入成功=>{}",self.daily_data_path)
 
     def get_station_data(self, station_id,station_name):
         url = "http://112.25.188.53:12080/njeqs/RTDataShow/AirHISDataShow_RTDB.aspx"
@@ -216,7 +302,7 @@ class Crawler:
             'strStationID': str(station_id)
         }
         logger.info("请求站点数据...")
-        station_res = self.session.get(url, params=params)
+        station_res = self.session.get(url, params=params,timeout=30)
         # (self.rt / Path(f"station_{station_id}.html")).write_text(station_res.text)
         df = pd.read_html(io.StringIO(station_res.text),
                         encoding="utf-8", attrs={'id': 'tblContainer'})[0]
@@ -262,7 +348,7 @@ class Crawler:
             datetime = self.get_datetime()
             logger.info("发现新数据=>{}",datetime)
             self.save_rt_data()
-            self.save_daily_data()
+            self.save_daily_data2()
             self.write_excel()
             self.datetime_tag_path.write_text(datetime.format("YYYY-MM-DDTHH"))
             return True
