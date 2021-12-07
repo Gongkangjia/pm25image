@@ -188,8 +188,9 @@ class Crawler:
         df["PM25"] = df["PM25"]*1000
         df["PM10"] = df["PM10"]*1000
         df["NO2"] = df["NO2"]*1000
-
+        #无效值剔除
         df = df.set_index("STATION_NAME")
+        df = df.applymap(lambda x :float(x) if 0<float(x)<1000 else np.nan) 
 
         df = df.rename({"六合雄州": "雄州", "溧水永阳": "永阳",
                        "高淳老职中": "老职中", "江宁彩虹桥": "彩虹桥"})
@@ -246,8 +247,8 @@ class Crawler:
         dfs = []
         for station_name,station_id in STATIONS.items():
             logger.info("获取站点当日数据=>{},{}",station_name,station_id)
-            start  = arrow.now().floor("day").format("YYYY-MM-DD HH:00")
-            end  = arrow.now().floor("day").shift(days=1).format("YYYY-MM-DD HH:00")
+            start  = arrow.now().shift(hours=-1).floor("day").format("YYYY-MM-DD HH:00")
+            end  = arrow.now().shift(hours=-1).floor("day").shift(days=1).format("YYYY-MM-DD HH:00")
             logger.info(start,end)
             data =   {
             **data_params,
@@ -259,8 +260,6 @@ class Crawler:
             'strEndTime': end,
             'btnQuery': '\u67E5 \u8BE2'
             }
-
-
             try:
                 response = self.session.post('http://112.25.188.53:12080/njeqs/DataQuery/AirStationDataStat.aspx', params=params, data=data,timeout=10)
             except requests.exceptions.RequestException as e:
@@ -285,9 +284,10 @@ class Crawler:
             df = df.loc[df.index.notna()]
             df = df.shift(periods=1, freq="H")
             #无效值剔除
-            df = df.applymap(lambda x :float(x)*1000 if float(x)>0 else np.nan)
+            df = df.applymap(lambda x :float(x)*1000 if 0<float(x)<1.0 else np.nan)
 
             df["STATION_NAME"]=station_name
+            logger.info(df.index)
             dfs.append(df)
 
         logger.info("正在合并站点数据")
@@ -343,8 +343,8 @@ class Crawler:
         #保存数据去画图
         all_df.to_csv(self.all_data_path,float_format="%.0f")
 
-    def run(self):
-        if self.is_update():
+    def run(self,force=False):
+        if self.is_update() or force:
             datetime = self.get_datetime()
             logger.info("发现新数据=>{}",datetime)
             self.save_rt_data()

@@ -20,7 +20,7 @@ logger.add(f"logs/{TODAY}.log")
 def run(force=False):
     crawler = Crawler()
 
-    if crawler.run() or force:
+    if crawler.run(force):
         d = DrawImage()
         d.run()
         PUSHCLASS = [
