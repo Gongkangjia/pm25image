@@ -325,7 +325,7 @@ class Crawler:
         daily_df = pd.read_csv(self.daily_data_path,index_col=0)
         all_df = pd.concat([rt_df,daily_df],axis=1)
         all_df = all_df[["PM25","PM25_CUM","PM10","PM10_CUM","NO2","NO2_CUM"]]
-
+        #all_df.iloc[-2:,:] = np.nan
         datetime = self.get_datetime()
         wb = openpyxl.load_workbook(f"static/template.xlsx")
         ws = wb["DATA"]
