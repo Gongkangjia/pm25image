@@ -223,7 +223,7 @@ class Crawler:
             return None
 
         data_hour = df.index.max().strftime("%Y%m%d%H")
-        now_hour = arrow.now().shift(hours=-1).format("YYYYMMDDHH")
+        now_hour = arrow.now().shift().format("YYYYMMDDHH")
         logger.info("data_hour=>{}", data_hour)
         logger.info("now_hour=>{}", now_hour)
         if data_hour == now_hour:
@@ -397,7 +397,7 @@ class Crawler:
                 logger.info("数据已完整")
                 self.write_excel()
                 self.datetime_tag_path.write_text(datetime.format("YYYY-MM-DDTHH"))
-            return True
+                return True
         else:
             logger.info("还没有新数据")
             return False

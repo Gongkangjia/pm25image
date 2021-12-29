@@ -25,7 +25,7 @@ def run(force=False):
         d.run()
         PUSHCLASS = [
             QiyeWechatPush,
-            EmailPush
+            # EmailPush
             ]
         for push in PUSHCLASS:
             pusher = push()
@@ -35,7 +35,7 @@ def run(force=False):
 @click.command()
 @click.option("-f", "--force",is_flag=True,help='Run force')
 @click.option("-d", "--daemon",is_flag=True,help='Run daemon')
-def main(force,daemon):
+def main(force, daemon):
     if force:
         run(force)
         return

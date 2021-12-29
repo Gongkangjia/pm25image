@@ -47,8 +47,9 @@ class VC:
                                  data=data, headers=headers).json()
         logger.info("请求结果为=>{}",response)
 
-        if response.get("error_code") == 110:
+        if response.get("error_code"):
             logger.info("access_token过期,重新获取...")
+            logger.info("打码失败")
             self.refresh_token()
             return self.get_words()
         if response["words_result_num"] != 1:
