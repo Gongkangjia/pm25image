@@ -102,7 +102,7 @@ class EmailPush(Push):
         logger.info("开始发送邮件 =>{},{},{}", subject, contents, attachments)
 
         sta = self.yag.send(to=[
-            "njhbjwkc@163.com",
+            #"njhbjwkc@163.com",
             "njhbjdqcgy@163.com"
         ],
             cc="kjgong@kjgong.cn",
@@ -120,7 +120,7 @@ class EmailPush(Push):
         contents = []
         contents.append(yagmail.inline(str(self.image_path)))
         footer = """
-        数据来源:南京市环境空气质量自动监测平台
+        数据来源:南京市环境空气质量自动监测平台&环境监测总站
         ---------------------------------
         龚康佳
         南京信息工程大学
