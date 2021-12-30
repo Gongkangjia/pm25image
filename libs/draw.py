@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import arrow
 from pathlib import Path
-from lxml import etree
 from loguru import logger
 
 
@@ -87,7 +86,7 @@ class DrawImage:
         wuxi_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         wuxi_data = wuxi_data.loc[:, ["PM2_5", "PM10", "NO2"]]
         wuxi_p_series = pd.concat([wuxi_data.iloc[-1], wuxi_data.mean().astype(int)])
-        wuxi_p_series.index = ["PM25", "PM10","NO2","PM25_CUM", "PM10_CUM", "NO2_CUM"]
+        wuxi_p_series.index = ["PM25", "PM10", "NO2", "PM25_CUM", "PM10_CUM", "NO2_CUM"]
         logger.info("正在绘制数据列")
         for species_index, species in enumerate(["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM"]):
             d = df[species]
@@ -97,6 +96,7 @@ class DrawImage:
             tmp_df = pd.concat([d, nl], axis=1)
             # 全市
             fill = "red" if d.mean() > wuxi_p_series[species] else "black"
+
             v = "-" if np.isnan(d.mean()) else str(round(d.mean()))
             self.draw_rec_text((16, species_index + 2), v)
             self.draw_rec_text((17, species_index + 2), str(round(wuxi_p_series[species])),fill=fill)

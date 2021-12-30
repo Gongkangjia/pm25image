@@ -366,11 +366,11 @@ class Crawler:
         wu_day = wu_data.mean()
 
         ws["C18"] = wu_data.iloc[-1, 0]
-        ws["D18"] = int(wu_day[0])
+        ws["D18"] = round(wu_day[0])
         ws["E18"] = wu_data.iloc[-1, 1]
-        ws["F18"] = int(wu_day[1])
+        ws["F18"] = round(wu_day[1])
         ws["G18"] = wu_data.iloc[-1, 2]
-        ws["H18"] = int(wu_day[2])
+        ws["H18"] = round(wu_day[2])
 
         for i, row in enumerate(ws["C4:H16"]):
             for j, col in enumerate(row):
