@@ -206,11 +206,7 @@ class Crawler:
     def save_wuxi_data(self):
         service = CNEMC()
         try:
-            start = arrow.now().shift(hours=-1).floor("day").shift(hours=1).format("YYYY-MM-DD HH:mm:SS")
-            end = arrow.now().floor("day").shift(days=2).format("YYYY-MM-DD HH:mm:SS")
-            logger.info("开始获取无锡数据,start=>{}", start)
-            logger.info("开始获取无锡数据,end=>{}", end)
-            res = service.get_city_history(city_code="320200", start=start, end=end)
+            res = service.get_city_history(city_code="320200")
 
             d = res["GetCityAQIPublishHistoriesResponse"]["GetCityAQIPublishHistoriesResult"]["RootResults"][
                 "CityAQIPublishHistory"]
