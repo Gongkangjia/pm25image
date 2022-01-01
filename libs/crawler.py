@@ -219,7 +219,7 @@ class Crawler:
             return None
 
         data_hour = df.index.max().strftime("%Y%m%d%H")
-        now_hour = arrow.now().shift(minutes=-20).format("YYYYMMDDHH")
+        now_hour = arrow.now().shift(minutes=-27).format("YYYYMMDDHH")
         logger.info("data_hour=>{}", data_hour)
         logger.info("now_hour=>{}", now_hour)
         if data_hour == now_hour:

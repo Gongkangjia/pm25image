@@ -25,7 +25,7 @@ def run(force=False):
         d.run()
         PUSHCLASS = [
             QiyeWechatPush,
-            # EmailPush
+            EmailPush
             ]
         for push in PUSHCLASS:
             pusher = push()

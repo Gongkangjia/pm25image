@@ -97,7 +97,8 @@ class DrawImage:
             tmp_df = pd.concat([d, nl], axis=1)
             # 全市
             fill = "red" if d.mean() > wuxi_p_series[species] else "black"
-            self.draw_rec_text((16, species_index + 2), str(round(d.mean())))
+            v = "-" if np.isnan(d.mean()) else str(round(d.mean()))
+            self.draw_rec_text((16, species_index + 2), v)
             self.draw_rec_text((17, species_index + 2), str(round(wuxi_p_series[species])),fill=fill)
 
             for index, species_value in tmp_df.iterrows():
