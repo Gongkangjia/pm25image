@@ -216,6 +216,7 @@ class Crawler:
             df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%S")
             logger.info(df)
         except Exception as e:
+            logger.error(e)
             return None
 
         data_hour = df.index.max().strftime("%Y%m%d%H")

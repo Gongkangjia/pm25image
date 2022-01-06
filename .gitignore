@@ -9,7 +9,6 @@ logs/*
 excel/*
 rt/*
 !.gitkeep
-!datetime.tag
 config.py
 
 # C extensions
