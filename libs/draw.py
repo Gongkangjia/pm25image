@@ -13,9 +13,10 @@ class DrawImage:
         self.datetime_tag_path = self.root / "rt" / Path("datetime.tag")
         self.image_path = self.root / "rt" / f"{self.datetime_tag_path.read_text()}.png"
         self.wuxi_data_path = self.root / "rt" / Path("wuxi_data.csv")
+        self.suzhou_data_path = self.root / "rt" / Path("suzhou_data.csv")
 
         self.columns_width = np.array([8, 12, 10, 10, 10, 10, 10, 10]) * 60
-        self.row_height = [180, 360, 180, *[180] * 15]
+        self.row_height = [180, 360, 180, *[180] * 16]
         self.fonesize = 140
         self.font = ImageFont.truetype(font=str(self.root / 'static/kjgong.ttf'), size=self.fonesize)
         self.linewidth = 6
@@ -82,11 +83,18 @@ class DrawImage:
             self.draw_rec_text((i + 3, 1), d["STATION_NAME"])
         self.draw_rec_text((16, 0, 16, 1), "全市")
         self.draw_rec_text((17, 0, 17, 1), "无锡")
+        self.draw_rec_text((18, 0, 18, 1), "苏州")
         # 读取无锡数据
         wuxi_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         wuxi_data = wuxi_data.loc[:, ["PM2_5", "PM10", "NO2"]]
         wuxi_p_series = pd.concat([wuxi_data.iloc[-1], wuxi_data.mean().astype(int)])
         wuxi_p_series.index = ["PM25", "PM10", "NO2", "PM25_CUM", "PM10_CUM", "NO2_CUM"]
+        # 读取苏州数据
+        suzhou_data = pd.read_csv(self.suzhou_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
+        suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2"]]
+        suzhou_p_series = pd.concat([suzhou_data.iloc[-1], suzhou_data.mean().astype(int)])
+        suzhou_p_series.index = ["PM25", "PM10", "NO2", "PM25_CUM", "PM10_CUM", "NO2_CUM"]
+
         logger.info("正在绘制数据列")
         for species_index, species in enumerate(["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM"]):
             d = df[species]
@@ -95,11 +103,12 @@ class DrawImage:
             d.name = "VALUE"
             tmp_df = pd.concat([d, nl], axis=1)
             # 全市
-            fill = "red" if d.mean() > wuxi_p_series[species] else "black"
 
-            v = "-" if np.isnan(d.mean()) else str(round(d.mean()))
-            self.draw_rec_text((16, species_index + 2), v)
-            self.draw_rec_text((17, species_index + 2), str(round(wuxi_p_series[species])),fill=fill)
+            self.draw_rec_text((16, species_index + 2), str(round(d.mean())))
+            fill = "red" if d.mean() > wuxi_p_series[species] else "black"
+            self.draw_rec_text((17, species_index + 2), str(round(wuxi_p_series[species])), fill=fill)
+            fill = "red" if d.mean() > suzhou_p_series[species] else "black"
+            self.draw_rec_text((18, species_index + 2), str(round(suzhou_p_series[species])), fill=fill)
 
             for index, species_value in tmp_df.iterrows():
                 t = "-" if np.isnan(species_value.VALUE) else str(round(species_value.VALUE))

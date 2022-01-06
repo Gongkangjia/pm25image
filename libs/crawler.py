@@ -27,6 +27,7 @@ class Crawler:
         self.daily_data_path = self.rt / Path("daily_data.csv")
         self.all_data_path = self.rt / Path("all_data.csv")
         self.wuxi_data_path = self.rt / Path("wuxi_data.csv")
+        self.suzhou_data_path = self.rt / Path("suzhou_data.csv")
         self.init_session()
         self.load_session()
 
@@ -220,11 +221,39 @@ class Crawler:
             return None
 
         data_hour = df.index.max().strftime("%Y%m%d%H")
+<<<<<<< HEAD
         now_hour = arrow.now().shift(minutes=-27).format("YYYYMMDDHH")
+=======
+        now_hour = arrow.now().shift(minutes=-20).format("YYYYMMDDHH")
+>>>>>>> 93165d1 (添加无锡和苏州)
         logger.info("data_hour=>{}", data_hour)
         logger.info("now_hour=>{}", now_hour)
         if data_hour == now_hour:
             df.to_csv(self.wuxi_data_path)
+            return d
+
+    def save_suzhou_data(self):
+        service = CNEMC()
+        try:
+            res = service.get_city_history(city_code="320500")
+
+            d = res["GetCityAQIPublishHistoriesResponse"]["GetCityAQIPublishHistoriesResult"]["RootResults"][
+                "CityAQIPublishHistory"]
+            df = pd.DataFrame(d)
+            df = df.loc[:, ["TimePoint", "PM2_5", "PM10", "NO2", "O3", "CO", "SO2", "AQI"]]
+            df = df.set_index("TimePoint")
+            df.index = pd.to_datetime(df.index, format="%Y-%m-%dT%H:%M:%S")
+            logger.info(df)
+        except Exception as e:
+            logger.error(e)
+            return None
+
+        data_hour = df.index.max().strftime("%Y%m%d%H")
+        now_hour = arrow.now().shift(minutes=-20).format("YYYYMMDDHH")
+        logger.info("data_hour=>{}", data_hour)
+        logger.info("now_hour=>{}", now_hour)
+        if data_hour == now_hour:
+            df.to_csv(self.suzhou_data_path)
             return d
 
     def save_daily_data(self):
@@ -352,7 +381,7 @@ class Crawler:
         all_df = all_df[["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM"]]
         # all_df.iloc[-2:,:] = np.nan
         datetime = self.get_datetime()
-        wb = openpyxl.load_workbook(f"static/template.xlsx")
+        wb = openpyxl.load_workbook(f"static/template2.xlsx")
         ws = wb["DATA"]
 
         ws["C1"].value = self.get_datetime().format("YYYY-MM-DD HH:mm")
@@ -362,6 +391,7 @@ class Crawler:
             for j, col in enumerate(row):
                 col.value = strdf.iloc[i, j]
 
+        #无锡
         wu_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         wu_data = wu_data.loc[:, ["PM2_5", "PM10", "NO2"]]
         wu_day = wu_data.mean()
@@ -372,6 +402,18 @@ class Crawler:
         ws["F18"] = round(wu_day[1])
         ws["G18"] = wu_data.iloc[-1, 2]
         ws["H18"] = round(wu_day[2])
+
+        #苏州
+        wu_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
+        wu_data = wu_data.loc[:, ["PM2_5", "PM10", "NO2"]]
+        wu_day = wu_data.mean()
+
+        ws["C19"] = wu_data.iloc[-1, 0]
+        ws["D19"] = round(wu_day[0])
+        ws["E19"] = wu_data.iloc[-1, 1]
+        ws["F19"] = round(wu_day[1])
+        ws["G19"] = wu_data.iloc[-1, 2]
+        ws["H19"] = round(wu_day[2])
 
         for i, row in enumerate(ws["C4:H16"]):
             for j, col in enumerate(row):
@@ -390,7 +432,7 @@ class Crawler:
 
             self.save_rt_data()
             self.save_daily_data2()
-            if self.save_wuxi_data():
+            if self.save_wuxi_data() and self.save_suzhou_data():
                 logger.info("数据已完整")
                 self.write_excel()
                 self.datetime_tag_path.write_text(datetime.format("YYYY-MM-DDTHH"))
