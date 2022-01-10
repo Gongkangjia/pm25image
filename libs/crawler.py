@@ -377,7 +377,7 @@ class Crawler:
         all_df = all_df[["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM"]]
         # all_df.iloc[-2:,:] = np.nan
         datetime = self.get_datetime()
-        wb = openpyxl.load_workbook(f"static/template2.xlsx")
+        wb = openpyxl.load_workbook(f"static/template3.xlsx")
         ws = wb["DATA"]
 
         ws["C1"].value = self.get_datetime().format("YYYY-MM-DD HH:mm")

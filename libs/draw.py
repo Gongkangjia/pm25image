@@ -105,9 +105,9 @@ class DrawImage:
             # 全市
 
             self.draw_rec_text((16, species_index + 2), str(round(d.mean())))
-            fill = "red" if d.mean() > wuxi_p_series[species] else "black"
+            fill = "green" if d.mean() > wuxi_p_series[species] else "black"
             self.draw_rec_text((17, species_index + 2), str(round(wuxi_p_series[species])), fill=fill)
-            fill = "red" if d.mean() > suzhou_p_series[species] else "black"
+            fill = "green" if d.mean() > suzhou_p_series[species] else "black"
             self.draw_rec_text((18, species_index + 2), str(round(suzhou_p_series[species])), fill=fill)
 
             for index, species_value in tmp_df.iterrows():
