@@ -400,16 +400,16 @@ class Crawler:
         ws["H18"] = round(wu_day[2])
 
         #苏州
-        wu_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
-        wu_data = wu_data.loc[:, ["PM2_5", "PM10", "NO2"]]
-        wu_day = wu_data.mean()
+        suzhou_data = pd.read_csv(self.suzhou_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
+        suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2"]]
+        suzhou_day = suzhou_data.mean()
 
-        ws["C19"] = wu_data.iloc[-1, 0]
-        ws["D19"] = round(wu_day[0])
-        ws["E19"] = wu_data.iloc[-1, 1]
-        ws["F19"] = round(wu_day[1])
-        ws["G19"] = wu_data.iloc[-1, 2]
-        ws["H19"] = round(wu_day[2])
+        ws["C19"] = suzhou_data.iloc[-1, 0]
+        ws["D19"] = round(suzhou_day[0])
+        ws["E19"] = suzhou_data.iloc[-1, 1]
+        ws["F19"] = round(suzhou_day[1])
+        ws["G19"] = suzhou_data.iloc[-1, 2]
+        ws["H19"] = round(suzhou_day[2])
 
         for i, row in enumerate(ws["C4:H16"]):
             for j, col in enumerate(row):
