@@ -246,7 +246,7 @@ class Crawler:
             return None
 
         data_hour = df.index.max().strftime("%Y%m%d%H")
-        now_hour = arrow.now().shift(minutes=-20).format("YYYYMMDDHH")
+        now_hour = arrow.now().shift(minutes=-27).format("YYYYMMDDHH")
         logger.info("data_hour=>{}", data_hour)
         logger.info("now_hour=>{}", now_hour)
         if data_hour == now_hour:
@@ -369,6 +369,28 @@ class Crawler:
         df["STATION_NAME"] = station_name
         logger.info("成功获取...")
         return df
+    def save_txt(self,rt_df,daily_df,wu_data,suzhou_data):
+
+        rt_df.loc["全市", :] = rt_df.mean()
+        rt_df.loc["无锡", :] = wu_data.iloc[-1, :].values
+        rt_df.loc["苏州", :] = suzhou_data.iloc[-1, :].values
+
+        daily_df.loc["全市", :] = daily_df.mean()
+        daily_df.loc["无锡", :] = wu_data.mean().values
+        daily_df.loc["苏州", :] = suzhou_data.mean().values
+
+        rts = rt_df.stack()
+        rts.name = "实时"
+
+        daily = daily_df.rename({"PM25_CUM": "PM25", "PM10_CUM": "PM10", "NO2_CUM": "NO2"}, axis=1)
+        dailys = daily.stack()
+        dailys.name = "当日累计"
+
+        res = pd.concat([rts, dailys], axis=1)
+        resstr = res.loc[rt_df.index].applymap(lambda x: "" if np.isnan(x) else round(x))
+        resstr.index.names = ["位置", "物种"]
+        datetime = self.get_datetime()
+        resstr.to_csv(f"history/{datetime.format('YYYY-MM-DDTHH')}.txt")
 
     def write_excel(self):
         # 先合并数据
@@ -421,6 +443,10 @@ class Crawler:
 
         # 保存数据去画图
         all_df.to_csv(self.all_data_path, float_format="%.0f")
+
+        #保存文本格式
+
+        self.save_txt(rt_df,daily_df,wu_data,suzhou_data)
 
     def run(self, force=False):
         if self.is_update() or force:
