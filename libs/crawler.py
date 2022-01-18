@@ -42,6 +42,7 @@ class Crawler:
             'Referer': 'http://112.25.188.53:12080/njeqs/mainFrame.aspx',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
         }
+        self.session.keep_alive = False
         self.session.mount('http://', HTTPAdapter(max_retries=3))
         self.session.mount('https://', HTTPAdapter(max_retries=3))
 
