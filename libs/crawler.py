@@ -259,7 +259,6 @@ class Crawler:
             logger.info("获取站点当日数据=>{},{}", station_name, station_id)
             station_df = self.get_station_data(station_id, station_name)
             dfs.append(station_df)
-
         logger.info("正在合并站点数据")
         all_station = pd.concat(dfs)
         daily_mean = all_station.groupby("STATION_NAME").mean()
@@ -323,6 +322,11 @@ class Crawler:
 
             df = pd.read_html(io.StringIO(response.text),
                               encoding="utf-8", attrs={'id': 'tblContainer'})[0]
+
+            datetime = self.get_datetime()
+            history_file = self.rt.parent.joinpath("api").joinpath(
+                f"{datetime.format('YYYY-MM-DDTHH')}_{station_name}.csv")
+            df.to_csv(history_file,index=None)
             df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)"]]
             df = df.rename({"时间": "DATETIME",
                             "PM2.5(mg/m3)": "PM25_CUM",
@@ -355,8 +359,10 @@ class Crawler:
         logger.info("请求站点数据...")
         station_res = self.session.get(url, params=params, timeout=30)
         # (self.rt / Path(f"station_{station_id}.html")).write_text(station_res.text)
+        datetime = self.get_datetime()
         df = pd.read_html(io.StringIO(station_res.text),
                           encoding="utf-8", attrs={'id': 'tblContainer'})[0]
+
         df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)"]].iloc[:-3]
         df = df.rename({"时间": "DATETIME",
                         "PM2.5(mg/m3)": "PM25_CUM",

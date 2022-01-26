@@ -9,6 +9,7 @@ logs/*
 excel/*
 rt/*
 history/*
+api/*
 !.gitkeep
 config.py
 
