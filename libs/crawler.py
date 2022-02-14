@@ -195,6 +195,7 @@ class Crawler:
         # 无效值剔除
         df = df.set_index("STATION_NAME")
         df = df.applymap(lambda x: float(x) if 0 < float(x) < 1000 else np.nan)
+        df.loc[df["PM25"] > df["PM10"], "PM10"] = np.nan
 
         df = df.rename({"六合雄州": "雄州", "溧水永阳": "永阳",
                         "高淳老职中": "老职中", "江宁彩虹桥": "彩虹桥"})
@@ -335,12 +336,12 @@ class Crawler:
                             }, axis=1)
             df = df.set_index("DATETIME")
             df.index = pd.to_datetime(df.index, format="%Y-%m-%d %H:%M", errors="coerce")
-
             df = df.loc[df.index.notna()]
             df = df.shift(periods=1, freq="H")
             # 无效值剔除
             df = df.applymap(lambda x: float(x) * 1000 if 0 < float(x) < 1.0 else np.nan)
-
+            # PM25>PM10
+            df.loc[df["PM25_CUM"] > df["PM10_CUM"], "PM10_CUM"] = np.nan
             df["STATION_NAME"] = station_name
             logger.info(df.index)
             dfs.append(df)
@@ -389,10 +390,11 @@ class Crawler:
         rts.name = "实时"
 
         daily = daily_df.rename({"PM25_CUM": "PM25", "PM10_CUM": "PM10", "NO2_CUM": "NO2"}, axis=1)
-        dailys = daily.stack()
+        print(daily_df)
+        dailys = daily.stack(dropna=False)
         dailys.name = "当日累计"
-
-        res = pd.concat([rts, dailys], axis=1)
+        print(rts,dailys)
+        res = pd.concat([rts, dailys], axis=1,)
         resstr = res.loc[rt_df.index].applymap(lambda x: "" if np.isnan(x) else round(x))
         resstr.index.names = ["位置", "物种"]
         datetime = self.get_datetime()
