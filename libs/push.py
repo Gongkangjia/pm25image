@@ -102,8 +102,8 @@ class EmailPush(Push):
         logger.info("开始发送邮件 =>{},{},{}", subject, contents, attachments)
 
         sta = self.yag.send(to=[
-            # "njhbjwkc@163.com",
-            # "njhbjdqcgy@163.com"
+            "qq45934861@163.com",
+            "njhbjdqcgy@163.com"
             # "kjgong@kjong.cn"
         ],
             cc="kjgong@kjgong.cn",
