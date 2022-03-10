@@ -184,14 +184,15 @@ class Crawler:
         df = pd.read_html(self.rt_html_path, encoding="utf-8",
                           attrs={'id': 'containerTB'})[0]
 
-        df = df[["序号", "站点名称", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)"]]
+        df = df[["序号", "站点名称", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)", "O3(mg/m3)"]]
         df = df.rename({"序号": "ID", "站点名称": "STATION_NAME", "PM2.5(mg/m3)": "PM25",
-                        "PM10(mg/m3)": "PM10", "NO2(mg/m3)": "NO2"}, axis=1)
+                        "PM10(mg/m3)": "PM10", "NO2(mg/m3)": "NO2","O3(mg/m3)": "O3"}, axis=1)
 
         df.set_index("ID", inplace=True)
         df["PM25"] = df["PM25"] * 1000
         df["PM10"] = df["PM10"] * 1000
         df["NO2"] = df["NO2"] * 1000
+        df["O3"] = df["O3"] * 1000
         # 无效值剔除
         df = df.set_index("STATION_NAME")
         df = df.applymap(lambda x: float(x) if 0 < float(x) < 1000 else np.nan)
@@ -248,6 +249,7 @@ class Crawler:
 
         data_hour = df.index.max().strftime("%Y%m%d%H")
         now_hour = arrow.now().shift(minutes=-27).format("YYYYMMDDHH")
+        # now_hour = arrow.now().format("YYYYMMDDHH")
         logger.info("data_hour=>{}", data_hour)
         logger.info("now_hour=>{}", now_hour)
         if data_hour == now_hour:
@@ -301,6 +303,8 @@ class Crawler:
             logger.info("获取站点当日数据=>{},{}", station_name, station_id)
             start = arrow.now().shift(hours=-1).floor("day").format("YYYY-MM-DD HH:00")
             end = arrow.now().shift(hours=-1).floor("day").shift(days=1).format("YYYY-MM-DD HH:00")
+            end = arrow.now().format("YYYY-MM-DD HH:00")
+
             logger.info(start, end)
             data = {
                 **data_params,
@@ -328,11 +332,12 @@ class Crawler:
             history_file = self.rt.parent.joinpath("api").joinpath(
                 f"{datetime.format('YYYY-MM-DDTHH')}_{station_name}.csv")
             df.to_csv(history_file,index=None)
-            df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)"]]
+            df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)", "O3(mg/m3)"]]
             df = df.rename({"时间": "DATETIME",
                             "PM2.5(mg/m3)": "PM25_CUM",
                             "PM10(mg/m3)": "PM10_CUM",
-                            "NO2(mg/m3)": "NO2_CUM"
+                            "NO2(mg/m3)": "NO2_CUM",
+                            "O3(mg/m3)": "O3_CUM"
                             }, axis=1)
             df = df.set_index("DATETIME")
             df.index = pd.to_datetime(df.index, format="%Y-%m-%d %H:%M", errors="coerce")
@@ -342,13 +347,17 @@ class Crawler:
             df = df.applymap(lambda x: float(x) * 1000 if 0 < float(x) < 1.0 else np.nan)
             # PM25>PM10
             df.loc[df["PM25_CUM"] > df["PM10_CUM"], "PM10_CUM"] = np.nan
+            df["O38H"] = df["O3_CUM"].rolling(8, 6).mean()
             df["STATION_NAME"] = station_name
-            logger.info(df.index)
+            logger.info(df)
             dfs.append(df)
 
         logger.info("正在合并站点数据")
         all_station = pd.concat(dfs)
+        print(all_station)
         daily_mean = all_station.groupby("STATION_NAME").mean()
+        daily_mean["O3_CUM"] = all_station.groupby("STATION_NAME").last()["O38H"]
+
         daily_mean.to_csv(self.daily_data_path, float_format="%.0f")
         logger.info("daily_data写入成功=>{}", self.daily_data_path)
 
@@ -364,11 +373,13 @@ class Crawler:
         df = pd.read_html(io.StringIO(station_res.text),
                           encoding="utf-8", attrs={'id': 'tblContainer'})[0]
 
-        df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)"]].iloc[:-3]
+        df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)","O3(mg/m3)"]].iloc[:-3]
         df = df.rename({"时间": "DATETIME",
                         "PM2.5(mg/m3)": "PM25_CUM",
                         "PM10(mg/m3)": "PM10_CUM",
-                        "NO2(mg/m3)": "NO2_CUM"}, axis=1)
+                        "NO2(mg/m3)": "NO2_CUM",
+                        "O3(mg/m3)": "O3_CUM"
+                        }, axis=1)
         df = df.set_index("DATETIME")
         df.index = pd.to_datetime(df.index, format="%Y-%m-%d %H:%M", errors="ignore")
         df = df.loc[df.index.minute == 0, :]
@@ -389,7 +400,7 @@ class Crawler:
         rts = rt_df.stack()
         rts.name = "实时"
 
-        daily = daily_df.rename({"PM25_CUM": "PM25", "PM10_CUM": "PM10", "NO2_CUM": "NO2"}, axis=1)
+        daily = daily_df.rename({"PM25_CUM": "PM25", "PM10_CUM": "PM10", "NO2_CUM": "NO2","O3_CUM": "O3"}, axis=1)
         print(daily_df)
         dailys = daily.stack(dropna=False)
         dailys.name = "当日累计"
@@ -405,10 +416,10 @@ class Crawler:
         rt_df = pd.read_csv(self.rt_data_path, index_col=0)
         daily_df = pd.read_csv(self.daily_data_path, index_col=0)
         all_df = pd.concat([rt_df, daily_df], axis=1)
-        all_df = all_df[["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM"]]
+        all_df = all_df[["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM", "O3", "O3_CUM"]]
         # all_df.iloc[-2:,:] = np.nan
         datetime = self.get_datetime()
-        wb = openpyxl.load_workbook(f"static/template3.xlsx")
+        wb = openpyxl.load_workbook(f"static/template4.xlsx")
         ws = wb["DATA"]
 
         ws["C1"].value = self.get_datetime().format("YYYY-MM-DD HH:mm")
@@ -420,8 +431,9 @@ class Crawler:
 
         #无锡
         wu_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
-        wu_data = wu_data.loc[:, ["PM2_5", "PM10", "NO2"]]
+        wu_data = wu_data.loc[:, ["PM2_5", "PM10", "NO2", "O3"]]
         wu_day = wu_data.mean()
+        wu_day_o38h = wu_data["O3"].rolling(8,8).mean().iloc[-1]
 
         ws["C18"] = wu_data.iloc[-1, 0]
         ws["D18"] = round(wu_day[0])
@@ -429,11 +441,14 @@ class Crawler:
         ws["F18"] = round(wu_day[1])
         ws["G18"] = wu_data.iloc[-1, 2]
         ws["H18"] = round(wu_day[2])
+        ws["I18"] = wu_data.iloc[-1, 3]
+        ws["J18"] = "-" if np.isnan(wu_day_o38h) else round(wu_day_o38h)
 
         #苏州
         suzhou_data = pd.read_csv(self.suzhou_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
-        suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2"]]
+        suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2", "O3"]]
         suzhou_day = suzhou_data.mean()
+        suzhou_day_o38h = suzhou_data["O3"].rolling(8,8).mean().iloc[-1]
 
         ws["C19"] = suzhou_data.iloc[-1, 0]
         ws["D19"] = round(suzhou_day[0])
@@ -441,8 +456,10 @@ class Crawler:
         ws["F19"] = round(suzhou_day[1])
         ws["G19"] = suzhou_data.iloc[-1, 2]
         ws["H19"] = round(suzhou_day[2])
+        ws["I19"] = wu_data.iloc[-1, 3]
+        ws["J19"] = "-" if np.isnan(suzhou_day_o38h) else round(suzhou_day_o38h)
 
-        for i, row in enumerate(ws["C4:H16"]):
+        for i, row in enumerate(ws["C4:J16"]):
             for j, col in enumerate(row):
                 col.value = strdf.iloc[i, j]
         excel_path = f"excel/{datetime.format('YYYY-MM-DDTHH')}.xlsx"
@@ -454,7 +471,7 @@ class Crawler:
 
         #保存文本格式
 
-        self.save_txt(rt_df,daily_df,wu_data,suzhou_data)
+        # self.save_txt(rt_df,daily_df,wu_data,suzhou_data)
 
     def run(self, force=False):
         if self.is_update() or force:

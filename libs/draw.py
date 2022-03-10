@@ -15,7 +15,7 @@ class DrawImage:
         self.wuxi_data_path = self.root / "rt" / Path("wuxi_data.csv")
         self.suzhou_data_path = self.root / "rt" / Path("suzhou_data.csv")
 
-        self.columns_width = np.array([8, 12, 10, 10, 10, 10, 10, 10]) * 60
+        self.columns_width = np.array([8, 12, 10, 10, 10, 10, 10, 10, 10, 10]) * 60
         self.row_height = [180, 360, 180, *[180] * 16]
         self.fonesize = 140
         self.font = ImageFont.truetype(font=str(self.root / 'static/kjgong.ttf'), size=self.fonesize)
@@ -62,7 +62,7 @@ class DrawImage:
         self.draw_rec_text((0, 0, 2, 0), "序号")
         self.draw_rec_text((0, 1, 2, 1), "点位")
         datetime = arrow.get(self.datetime_tag_path.read_text(), "YYYY-MM-DDTHH")
-        self.draw_rec_text((0, 2, 0, 7), datetime.format("YYYY-MM-DD HH:mm"))
+        self.draw_rec_text((0, 2, 0, 9), datetime.format("YYYY-MM-DD HH:mm"))
 
         self.draw_rec_text((1, 2, 1, 3), ["PM2.5", "（微克/立方米）"])
         self.draw_rec_text((2, 2), "实时")
@@ -76,6 +76,10 @@ class DrawImage:
         self.draw_rec_text((2, 6), "实时")
         self.draw_rec_text((2, 7), "当日累计")
 
+        self.draw_rec_text((1, 8, 1, 9), ["O3", "（微克/立方米）"])
+        self.draw_rec_text((2, 8), "实时")
+        self.draw_rec_text((2, 9), "O3_8H")
+
         df = pd.read_csv(self.all_data_path)
 
         for i, d in df.iterrows():
@@ -86,28 +90,32 @@ class DrawImage:
         self.draw_rec_text((18, 0, 18, 1), "苏州")
         # 读取无锡数据
         wuxi_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
-        wuxi_data = wuxi_data.loc[:, ["PM2_5", "PM10", "NO2"]]
+        wuxi_data = wuxi_data.loc[:, ["PM2_5", "PM10", "NO2","O3"]]
         wuxi_p_series = pd.concat([wuxi_data.iloc[-1], wuxi_data.mean().astype(int)])
-        wuxi_p_series.index = ["PM25", "PM10", "NO2", "PM25_CUM", "PM10_CUM", "NO2_CUM"]
+        wuxi_p_series.index = ["PM25", "PM10", "NO2", "O3", "PM25_CUM", "PM10_CUM", "NO2_CUM", "O3_CUM"]
+        wuxi_p_series["O3_CUM"] = wuxi_data["O3"].rolling(8,8).mean().iloc[-1]
         # 读取苏州数据
         suzhou_data = pd.read_csv(self.suzhou_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
-        suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2"]]
+        suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2","O3"]]
         suzhou_p_series = pd.concat([suzhou_data.iloc[-1], suzhou_data.mean().astype(int)])
-        suzhou_p_series.index = ["PM25", "PM10", "NO2", "PM25_CUM", "PM10_CUM", "NO2_CUM"]
+        suzhou_p_series.index = ["PM25", "PM10", "NO2", "O3", "PM25_CUM", "PM10_CUM", "NO2_CUM", "O3_CUM"]
+        suzhou_p_series["O3_CUM"] = suzhou_data["O3"].rolling(8,8).mean().iloc[-1]
 
         logger.info("正在绘制数据列")
-        for species_index, species in enumerate(["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM"]):
+        for species_index, species in enumerate(["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM", "O3", "O3_CUM"]):
             d = df[species]
             nl = d.isin(d.nlargest(3))
             nl.name = "NL"
             d.name = "VALUE"
             tmp_df = pd.concat([d, nl], axis=1)
             # 全市
+            mean_str = "-" if np.isnan(d.mean()) else str(round(d.mean()))
+            self.draw_rec_text((16, species_index + 2), mean_str)
 
-            self.draw_rec_text((16, species_index + 2), str(round(d.mean())))
-            fill = "green" if d.mean() > wuxi_p_series[species] else "black"
+            fill = "green" if mean_str != "-" and d.mean() > wuxi_p_series[species] else "black"
             self.draw_rec_text((17, species_index + 2), str(round(wuxi_p_series[species])), fill=fill)
-            fill = "green" if d.mean() > suzhou_p_series[species] else "black"
+
+            fill = "green" if mean_str != "-" and d.mean() > suzhou_p_series[species] else "black"
             self.draw_rec_text((18, species_index + 2), str(round(suzhou_p_series[species])), fill=fill)
 
             for index, species_value in tmp_df.iterrows():
@@ -117,7 +125,7 @@ class DrawImage:
 
     def save(self):
         logger.info("正在保存图片=>{}", self.image_path)
-        self.image = self.image.resize((1500, int(self.image.size[1] / self.image.size[0] * 1500)), Image.ANTIALIAS)
+        self.image = self.image.resize((2000, int(self.image.size[1] / self.image.size[0] * 2000)), Image.ANTIALIAS)
         self.image = self.image.quantize(colors=16, method=2)
         self.image.save(self.image_path)
 
