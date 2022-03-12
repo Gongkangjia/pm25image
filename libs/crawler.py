@@ -356,7 +356,7 @@ class Crawler:
         all_station = pd.concat(dfs)
         print(all_station)
         daily_mean = all_station.groupby("STATION_NAME").mean()
-        daily_mean["O3_CUM"] = all_station.groupby("STATION_NAME").last()["O38H"]
+        daily_mean["O3_CUM"] = all_station.groupby("STATION_NAME").max()["O38H"]
 
         daily_mean.to_csv(self.daily_data_path, float_format="%.0f")
         logger.info("daily_data写入成功=>{}", self.daily_data_path)
@@ -419,7 +419,7 @@ class Crawler:
         all_df = all_df[["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM", "O3", "O3_CUM"]]
         # all_df.iloc[-2:,:] = np.nan
         datetime = self.get_datetime()
-        wb = openpyxl.load_workbook(f"static/template4.xlsx")
+        wb = openpyxl.load_workbook(f"static/template5.xlsx")
         ws = wb["DATA"]
 
         ws["C1"].value = self.get_datetime().format("YYYY-MM-DD HH:mm")
@@ -433,7 +433,7 @@ class Crawler:
         wu_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         wu_data = wu_data.loc[:, ["PM2_5", "PM10", "NO2", "O3"]]
         wu_day = wu_data.mean()
-        wu_day_o38h = wu_data["O3"].rolling(8,8).mean().iloc[-1]
+        wu_day_o38h = wu_data["O3"].rolling(8,8).mean().max()
 
         ws["C18"] = wu_data.iloc[-1, 0]
         ws["D18"] = round(wu_day[0])
@@ -448,7 +448,7 @@ class Crawler:
         suzhou_data = pd.read_csv(self.suzhou_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2", "O3"]]
         suzhou_day = suzhou_data.mean()
-        suzhou_day_o38h = suzhou_data["O3"].rolling(8,8).mean().iloc[-1]
+        suzhou_day_o38h = suzhou_data["O3"].rolling(8,8).mean().max()
 
         ws["C19"] = suzhou_data.iloc[-1, 0]
         ws["D19"] = round(suzhou_day[0])

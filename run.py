@@ -1,4 +1,4 @@
-#!/home/kjgong/miniconda3/bin/python3
+#!/home/kjgong/software/python3/bin/python3
 from loguru import logger
 from pathlib import Path
 import os
@@ -8,7 +8,7 @@ import click
 
 from libs.draw import DrawImage
 from libs.crawler import Crawler
-from libs.push import QiyeWechatPush,EmailPush
+from libs.push import QiyeWechatPush, EmailPush
 
 
 os.chdir(Path(__file__).parent.absolute())

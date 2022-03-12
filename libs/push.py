@@ -102,8 +102,8 @@ class EmailPush(Push):
         logger.info("开始发送邮件 =>{},{},{}", subject, contents, attachments)
 
         sta = self.yag.send(to=[
-            "qq45934861@163.com",
-            "njhbjdqcgy@163.com",
+            # "qq45934861@163.com",
+            # "njhbjdqcgy@163.com",
             "kjgong@kjong.cn"
         ],
             cc="kjgong@kjgong.cn",
@@ -130,7 +130,7 @@ class EmailPush(Push):
         """
         contents.append(footer)
 
-        self.mail(f"【空气质量速报】{dt}", contents=contents,attachments=[str(self.excel_path)])
+        self.mail(f"【空气质量速报】{dt}", contents=contents, attachments=[str(self.excel_path)])
 
 
 if __name__ == "__main__":
