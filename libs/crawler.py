@@ -456,7 +456,7 @@ class Crawler:
         ws["F19"] = round(suzhou_day[1])
         ws["G19"] = suzhou_data.iloc[-1, 2]
         ws["H19"] = round(suzhou_day[2])
-        ws["I19"] = wu_data.iloc[-1, 3]
+        ws["I19"] = suzhou_data.iloc[-1, 3]
         ws["J19"] = "-" if np.isnan(suzhou_day_o38h) else round(suzhou_day_o38h)
 
         for i, row in enumerate(ws["C4:J16"]):
