@@ -10,10 +10,38 @@ from lxml import etree
 from pathlib import Path
 from loguru import logger
 import io
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdate
+import pytz
 
 from .vc import VC
 from .config import STATIONS
 from .cnemc import CNEMC
+
+from matplotlib import font_manager
+import os
+
+font_manager.fontManager.addfont(str(Path(__file__).parent.parent.absolute().joinpath("static/kjgong.ttf")))
+
+config = {
+    "font.family": "kjgong",
+    "font.size": 24,
+    "mathtext.fontset": "stix",
+    "xtick.direction": "in",
+    "ytick.direction": "in",
+    "axes.linewidth": 2,
+    "xtick.major.size": 8,
+    "xtick.major.width": 2,
+    "xtick.major.pad": 12,
+    "xtick.minor.size": 5,
+    "xtick.minor.width": 2,
+    "ytick.major.size": 8,
+    "ytick.major.width": 2,
+    "ytick.minor.size": 5,
+    "ytick.minor.width": 2,
+    "ytick.minor.width": 2
+}
+plt.rcParams.update(config)
 
 
 class Crawler:
@@ -180,19 +208,91 @@ class Crawler:
 
         return new != last
 
+    @staticmethod
+    def get_df_from_html(html):
+        # logger.info("html=>{}",html)
+        if isinstance(html, Path):
+            html = etree.parse(str(html), etree.HTMLParser(encoding="utf-8"))
+        else:
+            html = etree.HTML(html)
+        table = html.xpath("//table[@id='containerTB']")
+        if table:
+            table = table[0]
+        else:
+            logger.error("Table not found！")
+            logger.error(etree.tostring(html))
+            return None
+
+        columns = None
+        data = []
+        for tr in table.xpath(".//tr"):
+            if tr.attrib["class"] in ("tableHead44",):
+                columns = tr.xpath("./th/text()")
+                print(columns)
+            elif tr.attrib["class"] in ("tableRow1", "tableRow2"):
+                v = []
+                for cell in tr.xpath("./td"):
+                    text = cell.xpath("./text()")
+                    print(text)
+                    if text:
+                        v.append(text[0])
+                    else:
+                        v.append(np.nan)
+                v = np.array(v)
+                mask = np.array(tr.xpath("./td/@class"))
+                print(v)
+                print(mask)
+                v = np.where((mask == "td1-NotIsValid1") | (mask == "td1-IsOs") | (v == "\xa0"), np.nan, v)
+                data.append(v)
+
+        df = pd.DataFrame(data, columns=columns)
+        print(df)
+        return df
+
     def save_rt_data(self):
-        df = pd.read_html(self.rt_html_path, encoding="utf-8",
-                          attrs={'id': 'containerTB'})[0]
+        html = etree.parse(str(self.rt_html_path), etree.HTMLParser(encoding="utf-8"))
+        table = html.xpath("//table[@id='containerTB']")
+        if table:
+            table = table[0]
+        else:
+            logger.error("Table not found！")
+            logger.error(etree.tostring(html))
+            return None
+
+        columns = None
+        data = []
+        for tr in table.xpath(".//tr"):
+            if tr.attrib["class"] in ("tableHead44",):
+                columns = tr.xpath("./th/text()")
+                print(columns)
+            elif tr.attrib["class"] in ("tableRow1", "tableRow2"):
+                v = []
+                for cell in tr.xpath("./td"):
+                    text = cell.xpath("./text()")
+                    print(text)
+                    if text:
+                        v.append(text[0])
+                    else:
+                        v.append(np.nan)
+                v = np.array(v)
+                mask = np.array(tr.xpath("./td/@class"))
+                print(v)
+                print(mask)
+                v = np.where((mask == "td1-NotIsValid1") | (mask == "td1-IsOs") | (v == "\xa0"), np.nan, v)
+                data.append(v)
+
+        df = pd.DataFrame(data, columns=columns)
 
         df = df[["序号", "站点名称", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)", "O3(mg/m3)"]]
         df = df.rename({"序号": "ID", "站点名称": "STATION_NAME", "PM2.5(mg/m3)": "PM25",
-                        "PM10(mg/m3)": "PM10", "NO2(mg/m3)": "NO2","O3(mg/m3)": "O3"}, axis=1)
+                        "PM10(mg/m3)": "PM10", "NO2(mg/m3)": "NO2", "O3(mg/m3)": "O3"}, axis=1)
 
         df.set_index("ID", inplace=True)
-        df["PM25"] = df["PM25"] * 1000
-        df["PM10"] = df["PM10"] * 1000
-        df["NO2"] = df["NO2"] * 1000
-        df["O3"] = df["O3"] * 1000
+        df["PM25"] = df["PM25"].astype(float) * 1000
+        df["PM10"] = df["PM10"].astype(float) * 1000
+        df["NO2"] = df["NO2"].astype(float) * 1000
+        df["O3"] = df["O3"].astype(float) * 1000
+
         # 无效值剔除
         df = df.set_index("STATION_NAME")
         df = df.applymap(lambda x: float(x) if 0 < float(x) < 1000 else np.nan)
@@ -268,6 +368,69 @@ class Crawler:
         daily_mean.to_csv(self.daily_data_path, float_format="%.0f")
         logger.info("daily_data写入成功=>{}", self.daily_data_path)
 
+    def get_starions_data_minute(self):
+        # 首先获取请求参数
+        url = "http://112.25.188.53:12080/njeqs/RTDataShow/AirHISDataShow.aspx"
+        params = {
+            'fid': '689'
+        }
+        response = self.session.get(url, params=params)
+        logger.info(response)
+        html = etree.HTML(response.text)
+
+        __VIEWSTATE = html.xpath("*//input[@id='__VIEWSTATE']/@value")
+        __VIEWSTATEGENERATOR = html.xpath(
+            "*//input[@id='__VIEWSTATEGENERATOR']/@value")
+        __EVENTVALIDATION = html.xpath(
+            "*//input[@id='__EVENTVALIDATION']/@value")
+
+        if __VIEWSTATE and __VIEWSTATEGENERATOR and __EVENTVALIDATION:
+            data_params = {
+                "__VIEWSTATE": __VIEWSTATE[0],
+                "__VIEWSTATEGENERATOR": __VIEWSTATEGENERATOR[0],
+                "__EVENTVALIDATION": __EVENTVALIDATION[0]
+            }
+            logger.info("获取站点请求参数成功=>{}", data_params)
+        else:
+            logger.error("获取站点请求参数失败=>{}", response.text)
+
+        all_station = []
+        for station_name, station_id in STATIONS.items():
+            logger.info("获取站点当日数据=>{},{}", station_name, station_id)
+            start = arrow.now().shift(hours=-1).floor("day").format("YYYY-MM-DD HH:00")
+            end = arrow.now().shift(hours=-1).floor("day").shift(days=1).format("YYYY-MM-DD HH:00")
+            end = arrow.now().format("YYYY-MM-DD HH:00")
+
+            logger.info(start, end)
+            data = {
+                **data_params,
+                'strAuditData': '',
+                'ddlStationID': station_id,
+                'strStartTime': start,
+                'strEndTime': end,
+                'btnQuery': '\u67E5 \u8BE2',
+                'dimMonOptTypeId': '6'
+            }
+            try:
+                response = self.session.post(url, params=params, data=data, timeout=10)
+            except requests.exceptions.RequestException as e:
+                logger.error("重试3次后仍未成功=>{}", e)
+                return False
+
+            html = etree.HTML(response.text)
+
+            df = pd.read_html(io.StringIO(response.text),
+                              encoding="utf-8", attrs={'id': 'tblContainer'})[0]
+            df = df.set_index("时间")
+            df.index = pd.to_datetime(df.index, format="%Y-%m-%d %H:%M", errors="coerce")
+
+            s = df.loc[df.index.notna(), "O3 (mg/m3)"]
+            s.name = station_name
+            all_station.append(s)
+
+        all_station_minute_df = pd.concat(all_station, axis=1) * 1000
+        return all_station_minute_df
+
     def save_daily_data2(self):
         # 首先获取请求参数
         url = 'http://112.25.188.53:12080/njeqs/DataQuery/AirStationDataStat.aspx'
@@ -325,13 +488,41 @@ class Crawler:
 
             html = etree.HTML(response.text)
 
-            df = pd.read_html(io.StringIO(response.text),
-                              encoding="utf-8", attrs={'id': 'tblContainer'})[0]
+            # df = pd.read_html(io.StringIO(response.text),
+            #                   encoding="utf-8", attrs={'id': 'tblContainer'})[0]
+            table = html.xpath("//table[@id='tblContainer']")
+            if table:
+                table = table[0]
+            else:
+                logger.error("Table not found！")
+                logger.error(etree.tostring(html))
+                return None
+
+            columns = None
+            data = []
+            for tr in table.xpath(".//tr"):
+                if tr.attrib["class"] in ("tableHead44",):
+                    columns = tr.xpath("./th/text()")
+                elif tr.attrib["class"] in ("tableRow1", "tableRow2"):
+                    v = []
+                    for cell in tr.xpath("./td"):
+                        text = cell.xpath("./text()")
+                        if text:
+                            v.append(text[0])
+                        else:
+                            v.append(np.nan)
+                    v = np.array(v)
+                    mask = np.array(tr.xpath("./td/@class"))
+                    v = np.where((mask == "td1-NotIsValid1") | (mask == "td1-IsOs") | (v == "\xa0"), np.nan, v)
+                    data.append(v)
+
+            df = pd.DataFrame(data, columns=columns)
 
             datetime = self.get_datetime()
             history_file = self.rt.parent.joinpath("api").joinpath(
                 f"{datetime.format('YYYY-MM-DDTHH')}_{station_name}.csv")
-            df.to_csv(history_file,index=None)
+
+            df.to_csv(history_file, index=None)
             df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)", "O3(mg/m3)"]]
             df = df.rename({"时间": "DATETIME",
                             "PM2.5(mg/m3)": "PM25_CUM",
@@ -340,7 +531,7 @@ class Crawler:
                             "O3(mg/m3)": "O3_CUM"
                             }, axis=1)
             df = df.set_index("DATETIME")
-            df.index = pd.to_datetime(df.index, format="%Y-%m-%d %H:%M", errors="coerce")
+            df.index = pd.to_datetime(df.index.astype(str), format="%Y-%m-%d %H:%M", errors="coerce")
             df = df.loc[df.index.notna()]
             df = df.shift(periods=1, freq="H")
             # 无效值剔除
@@ -354,7 +545,6 @@ class Crawler:
 
         logger.info("正在合并站点数据")
         all_station = pd.concat(dfs)
-        print(all_station)
         daily_mean = all_station.groupby("STATION_NAME").mean()
         daily_mean["O3_CUM"] = all_station.groupby("STATION_NAME").max()["O38H"]
 
@@ -368,12 +558,11 @@ class Crawler:
         }
         logger.info("请求站点数据...")
         station_res = self.session.get(url, params=params, timeout=30)
-        # (self.rt / Path(f"station_{station_id}.html")).write_text(station_res.text)
-        datetime = self.get_datetime()
+
         df = pd.read_html(io.StringIO(station_res.text),
                           encoding="utf-8", attrs={'id': 'tblContainer'})[0]
 
-        df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)","O3(mg/m3)"]].iloc[:-3]
+        df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)", "O3(mg/m3)"]].iloc[:-3]
         df = df.rename({"时间": "DATETIME",
                         "PM2.5(mg/m3)": "PM25_CUM",
                         "PM10(mg/m3)": "PM10_CUM",
@@ -387,7 +576,8 @@ class Crawler:
         df["STATION_NAME"] = station_name
         logger.info("成功获取...")
         return df
-    def save_txt(self,rt_df,daily_df,wu_data,suzhou_data):
+
+    def save_txt(self, rt_df, daily_df, wu_data, suzhou_data):
 
         rt_df.loc["全市", :] = rt_df.mean()
         rt_df.loc["无锡", :] = wu_data.iloc[-1, :].values
@@ -400,12 +590,12 @@ class Crawler:
         rts = rt_df.stack()
         rts.name = "实时"
 
-        daily = daily_df.rename({"PM25_CUM": "PM25", "PM10_CUM": "PM10", "NO2_CUM": "NO2","O3_CUM": "O3"}, axis=1)
+        daily = daily_df.rename({"PM25_CUM": "PM25", "PM10_CUM": "PM10", "NO2_CUM": "NO2", "O3_CUM": "O3"}, axis=1)
         print(daily_df)
         dailys = daily.stack(dropna=False)
         dailys.name = "当日累计"
-        print(rts,dailys)
-        res = pd.concat([rts, dailys], axis=1,)
+        print(rts, dailys)
+        res = pd.concat([rts, dailys], axis=1, )
         resstr = res.loc[rt_df.index].applymap(lambda x: "" if np.isnan(x) else round(x))
         resstr.index.names = ["位置", "物种"]
         datetime = self.get_datetime()
@@ -429,11 +619,11 @@ class Crawler:
             for j, col in enumerate(row):
                 col.value = strdf.iloc[i, j]
 
-        #无锡
+        # 无锡
         wu_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         wu_data = wu_data.loc[:, ["PM2_5", "PM10", "NO2", "O3"]]
         wu_day = wu_data.mean()
-        wu_day_o38h = wu_data["O3"].rolling(8,8).mean().max()
+        wu_day_o38h = wu_data["O3"].rolling(8, 8).mean().max()
 
         ws["C18"] = wu_data.iloc[-1, 0]
         ws["D18"] = round(wu_day[0])
@@ -444,11 +634,11 @@ class Crawler:
         ws["I18"] = wu_data.iloc[-1, 3]
         ws["J18"] = "-" if np.isnan(wu_day_o38h) else round(wu_day_o38h)
 
-        #苏州
+        # 苏州
         suzhou_data = pd.read_csv(self.suzhou_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2", "O3"]]
         suzhou_day = suzhou_data.mean()
-        suzhou_day_o38h = suzhou_data["O3"].rolling(8,8).mean().max()
+        suzhou_day_o38h = suzhou_data["O3"].rolling(8, 8).mean().max()
 
         ws["C19"] = suzhou_data.iloc[-1, 0]
         ws["D19"] = round(suzhou_day[0])
@@ -456,7 +646,7 @@ class Crawler:
         ws["F19"] = round(suzhou_day[1])
         ws["G19"] = suzhou_data.iloc[-1, 2]
         ws["H19"] = round(suzhou_day[2])
-        ws["I19"] = wu_data.iloc[-1, 3]
+        ws["I19"] = suzhou_data.iloc[-1, 3]
         ws["J19"] = "-" if np.isnan(suzhou_day_o38h) else round(suzhou_day_o38h)
 
         for i, row in enumerate(ws["C4:J16"]):
@@ -469,9 +659,30 @@ class Crawler:
         # 保存数据去画图
         all_df.to_csv(self.all_data_path, float_format="%.0f")
 
-        #保存文本格式
+        # 保存文本格式
 
         # self.save_txt(rt_df,daily_df,wu_data,suzhou_data)
+
+    def plot_ts(self):
+
+        # df = self.get_starions_data_minute()
+        # df["全市"] = df.mean(axis=1)
+        # df.to_csv("minute.csv")
+        df = pd.read_csv("minute.csv", index_col=0, parse_dates=True)
+        df = df.applymap(lambda x: x if x < 300 else np.nan)
+        print(df)
+        fig = plt.figure(figsize=(18, 10))
+        ax = fig.add_subplot(111)
+        for name, d in df.iteritems():
+            ax.plot(d.index, d, label=name)
+
+        ax.set_ylabel("$O_{3}$浓度 $\mu g/m^{3}$")
+
+        ax.set_xlim(df.index.min())
+        ax.xaxis.set_major_locator(mdate.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
+        ax.xaxis.set_major_formatter(mdate.DateFormatter('%H'))  # 设置时间标签显示格式
+        ax.legend(frameon=False, ncol=7, loc="upper center", bbox_to_anchor=(0.5, -0.1), fontsize=16)
+        plt.savefig(f"o3.png", dpi=400, bbox_inches='tight')
 
     def run(self, force=False):
         if self.is_update() or force:
@@ -492,6 +703,8 @@ class Crawler:
 
 if __name__ == "__main__":
     crawer = Crawler()
-    crawer.run()
+    # crawer.run()
+    # crawer.get_starions_data_minute()
     # crawer.get_all_station()
+    crawer.plot_ts()
     # logger.info(crawer.get_dataframe())
