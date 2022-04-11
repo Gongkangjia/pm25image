@@ -277,7 +277,7 @@ class Crawler:
                 mask = np.array(tr.xpath("./td/@class"))
                 print(v)
                 print(mask)
-                v = np.where((mask == "td1-NotIsValid1") | (mask == "td1-IsOs") | (v == "\xa0"), np.nan, v)
+                v = np.where((mask == "td1-NotIsValid1") | (v == "\xa0"), np.nan, v)
                 data.append(v)
 
         df = pd.DataFrame(data, columns=columns)
