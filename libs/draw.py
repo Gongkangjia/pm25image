@@ -93,13 +93,13 @@ class DrawImage:
         wuxi_data = wuxi_data.loc[:, ["PM2_5", "PM10", "NO2","O3"]]
         wuxi_p_series = pd.concat([wuxi_data.iloc[-1], wuxi_data.mean().astype(int)])
         wuxi_p_series.index = ["PM25", "PM10", "NO2", "O3", "PM25_CUM", "PM10_CUM", "NO2_CUM", "O3_CUM"]
-        wuxi_p_series["O3_CUM"] = wuxi_data["O3"].rolling(8,8).mean().max()
+        wuxi_p_series["O3_CUM"] = wuxi_data["O3"].rolling(8,6).mean().between_time("08:00","00:00").max()
         # 读取苏州数据
         suzhou_data = pd.read_csv(self.suzhou_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2","O3"]]
         suzhou_p_series = pd.concat([suzhou_data.iloc[-1], suzhou_data.mean().astype(int)])
         suzhou_p_series.index = ["PM25", "PM10", "NO2", "O3", "PM25_CUM", "PM10_CUM", "NO2_CUM", "O3_CUM"]
-        suzhou_p_series["O3_CUM"] = suzhou_data["O3"].rolling(8,8).mean().max()
+        suzhou_p_series["O3_CUM"] = suzhou_data["O3"].rolling(8,6).mean().between_time("08:00","00:00").max()
 
         logger.info("正在绘制数据列")
         for species_index, species in enumerate(["PM25", "PM25_CUM", "PM10", "PM10_CUM", "NO2", "NO2_CUM", "O3", "O3_CUM"]):
@@ -113,10 +113,12 @@ class DrawImage:
             self.draw_rec_text((16, species_index + 2), mean_str)
 
             fill = "green" if mean_str != "-" and d.mean() > wuxi_p_series[species] else "black"
-            self.draw_rec_text((17, species_index + 2), str(round(wuxi_p_series[species])), fill=fill)
+            v = "-" if  np.isnan(wuxi_p_series[species]) else str(round(wuxi_p_series[species]))
+            self.draw_rec_text((17, species_index + 2), v, fill=fill)
 
             fill = "green" if mean_str != "-" and d.mean() > suzhou_p_series[species] else "black"
-            self.draw_rec_text((18, species_index + 2), str(round(suzhou_p_series[species])), fill=fill)
+            v = "-" if  np.isnan(suzhou_p_series[species]) else str(round(suzhou_p_series[species]))
+            self.draw_rec_text((18, species_index + 2), v, fill=fill)
 
             for index, species_value in tmp_df.iterrows():
                 t = "-" if np.isnan(species_value.VALUE) else str(round(species_value.VALUE))
