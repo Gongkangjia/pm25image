@@ -138,6 +138,7 @@ class ImageGenerator(GeneratorBase):
                 self.draw_rec_text((index + 16, species_index + 2), row_data.VALUE, fill=row_data.COLOR)
 
         logger.info("绘制完整正在保存=>{}", self.output)
+        self.ax = self.ax.resize((2000, int(self.ax.size[1] / self.ax.size[0] * 2000)), Image.ANTIALIAS)
         self.ax.save(self.output)
         return self.output
 
