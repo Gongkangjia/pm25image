@@ -123,15 +123,19 @@ class Cnemc(Base):
         logger.info("end=>{}", arrow_end)
 
         data_list = []
-
+        dt_full = pd.Series(pd.date_range(start=arrow_start.format("YYYY-MM-DD HH:mm:ss"),
+                                          end=arrow_end.format("YYYY-MM-DD HH:mm:ss"), freq="H"),
+                            name="DATETIME").to_frame()
+        # dt_full = pd.DataFrame()
         for station_name, station_id in STATIONS_CNEMC.items():
+
             df = self.get_station_df(station_code=station_id, start=arrow_start, end=arrow_end)
             df["O3"] = df["O3_24h"]
             df = df.loc[:, ["TimePoint", "PM2_5", "PM10", "NO2", "O3", ]]
             df = df.rename({"TimePoint": "DATETIME"}, axis=1)
             df["DATETIME"] = pd.to_datetime(df["DATETIME"])
+            df = dt_full.merge(df, left_on="DATETIME", right_on="DATETIME", how="left")
             df = df.set_index("DATETIME").applymap(self._to_int)
-            df = df.resample("H").asfreq()
             df["O3_8H"] = df["O3"].rolling(8, 6).mean()
             df.loc[df.index.hour < 8, "O3_8H"] = np.nan
             df["NAME"] = station_name
@@ -142,8 +146,9 @@ class Cnemc(Base):
             df = df.loc[:, ["TimePoint", "PM2_5", "PM10", "NO2", "O3", ]]
             df = df.rename({"TimePoint": "DATETIME"}, axis=1)
             df["DATETIME"] = pd.to_datetime(df["DATETIME"])
+            df = dt_full.merge(df, left_on="DATETIME", right_on="DATETIME", how="left")
             df = df.set_index("DATETIME").applymap(self._to_int)
-            df = df.resample("H").asfreq()
+
             df["O3_8H"] = df["O3"].rolling(8, 6).mean()
             df.loc[df.index.hour < 8, "O3_8H"] = np.nan
             df["NAME"] = name
