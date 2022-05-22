@@ -6,12 +6,8 @@ __pycache__/
 
 #User
 logs/*
-excel/*
-rt/*
-history/*
-api/*
+output/*
 !.gitkeep
-config.py
 
 # C extensions
 *.so
