@@ -411,7 +411,7 @@ class Crawler:
                 'dimMonOptTypeId': '6'
             }
             try:
-                response = self.session.post(url, params=params, data=data, timeout=10)
+                response = self.session.post(url, params=params, data=data, timeout=60)
             except requests.exceptions.RequestException as e:
                 logger.error("重试3次后仍未成功=>{}", e)
                 return False
@@ -480,7 +480,7 @@ class Crawler:
             }
             try:
                 response = self.session.post('http://112.25.188.53:12080/njeqs/DataQuery/AirStationDataStat.aspx',
-                                             params=params, data=data, timeout=10)
+                                             params=params, data=data, timeout=60)
             except requests.exceptions.RequestException as e:
                 logger.error("重试3次后仍未成功=>{}", e)
                 return False
@@ -569,7 +569,7 @@ class Crawler:
             'strStationID': str(station_id)
         }
         logger.info("请求站点数据...")
-        station_res = self.session.get(url, params=params, timeout=30)
+        station_res = self.session.get(url, params=params, timeout=60)
 
         df = pd.read_html(io.StringIO(station_res.text),
                           encoding="utf-8", attrs={'id': 'tblContainer'})[0]
