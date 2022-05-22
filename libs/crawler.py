@@ -1,3 +1,4 @@
+import logging
 import time
 import numpy as np
 import openpyxl
@@ -240,13 +241,11 @@ class Crawler:
                         v.append(np.nan)
                 v = np.array(v)
                 mask = np.array(tr.xpath("./td/@class"))
-                print(v)
-                print(mask)
-                v = np.where((mask == "td1-NotIsValid1") | (mask == "td1-IsOs") | (v == "\xa0"), np.nan, v)
+                v = np.where((mask == "td1-NotIsValid1") | (v == "\xa0"), np.nan, v)
                 data.append(v)
 
         df = pd.DataFrame(data, columns=columns)
-        print(df)
+        logging.info(df)
         return df
 
     def save_rt_data(self):
@@ -278,7 +277,7 @@ class Crawler:
                 mask = np.array(tr.xpath("./td/@class"))
                 print(v)
                 print(mask)
-                v = np.where((mask == "td1-NotIsValid1") | (mask == "td1-IsOs") | (v == "\xa0"), np.nan, v)
+                v = np.where((mask == "td1-NotIsValid1") | (v == "\xa0"), np.nan, v)
                 data.append(v)
 
         df = pd.DataFrame(data, columns=columns)
@@ -295,7 +294,7 @@ class Crawler:
 
         # 无效值剔除
         df = df.set_index("STATION_NAME")
-        df = df.applymap(lambda x: float(x) if 0 < float(x) < 1000 else np.nan)
+        df = df.applymap(lambda x: float(x) if 0 < float(x) < 500 else np.nan)
         df.loc[df["PM25"] > df["PM10"], "PM10"] = np.nan
 
         df = df.rename({"六合雄州": "雄州", "溧水永阳": "永阳",
@@ -412,7 +411,7 @@ class Crawler:
                 'dimMonOptTypeId': '6'
             }
             try:
-                response = self.session.post(url, params=params, data=data, timeout=10)
+                response = self.session.post(url, params=params, data=data, timeout=60)
             except requests.exceptions.RequestException as e:
                 logger.error("重试3次后仍未成功=>{}", e)
                 return False
@@ -481,7 +480,7 @@ class Crawler:
             }
             try:
                 response = self.session.post('http://112.25.188.53:12080/njeqs/DataQuery/AirStationDataStat.aspx',
-                                             params=params, data=data, timeout=10)
+                                             params=params, data=data, timeout=60)
             except requests.exceptions.RequestException as e:
                 logger.error("重试3次后仍未成功=>{}", e)
                 return False
@@ -512,8 +511,11 @@ class Crawler:
                         else:
                             v.append(np.nan)
                     v = np.array(v)
+                    print(v)
                     mask = np.array(tr.xpath("./td/@class"))
-                    v = np.where((mask == "td1-NotIsValid1") | (mask == "td1-IsOs") | (v == "\xa0"), np.nan, v)
+                    print(mask)
+
+                    v = np.where((mask == "td1-NotIsValid1") | (v == "\xa0"), np.nan, v)
                     data.append(v)
 
             df = pd.DataFrame(data, columns=columns)
@@ -523,7 +525,15 @@ class Crawler:
                 f"{datetime.format('YYYY-MM-DDTHH')}_{station_name}.csv")
 
             df.to_csv(history_file, index=None)
+            #print(df.columns)
+            #print(df.iloc[:,7])
+            #df["O3(mg/m3)"]=df.iloc[:,7]
+            #return dhdhdh
+            df = df.loc[:,~df.columns.duplicated()]
+            df = df.rename({"O3_8(mg/m3)":"O3(mg/m3)"},axis=1)
+            print(df.columns)
             df = df.loc[:, ["时间", "PM2.5(mg/m3)", "PM10(mg/m3)", "NO2(mg/m3)", "O3(mg/m3)"]]
+            print(df)
             df = df.rename({"时间": "DATETIME",
                             "PM2.5(mg/m3)": "PM25_CUM",
                             "PM10(mg/m3)": "PM10_CUM",
@@ -535,10 +545,12 @@ class Crawler:
             df = df.loc[df.index.notna()]
             df = df.shift(periods=1, freq="H")
             # 无效值剔除
-            df = df.applymap(lambda x: float(x) * 1000 if 0 < float(x) < 1.0 else np.nan)
+            df = df.applymap(lambda x: float(x) * 1000 if 0 < float(x) < 0.5 else np.nan)
             # PM25>PM10
             df.loc[df["PM25_CUM"] > df["PM10_CUM"], "PM10_CUM"] = np.nan
             df["O38H"] = df["O3_CUM"].rolling(8, 6).mean()
+            df.loc[df["O38H"].index.hour<8,"O38H"] = np.nan
+            print(df["PM25_CUM"])
             df["STATION_NAME"] = station_name
             logger.info(df)
             dfs.append(df)
@@ -557,7 +569,7 @@ class Crawler:
             'strStationID': str(station_id)
         }
         logger.info("请求站点数据...")
-        station_res = self.session.get(url, params=params, timeout=30)
+        station_res = self.session.get(url, params=params, timeout=60)
 
         df = pd.read_html(io.StringIO(station_res.text),
                           encoding="utf-8", attrs={'id': 'tblContainer'})[0]
@@ -623,7 +635,7 @@ class Crawler:
         wu_data = pd.read_csv(self.wuxi_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         wu_data = wu_data.loc[:, ["PM2_5", "PM10", "NO2", "O3"]]
         wu_day = wu_data.mean()
-        wu_day_o38h = wu_data["O3"].rolling(8, 8).mean().max()
+        wu_day_o38h = wu_data["O3"].rolling(8, 6).mean().between_time("08:00","00:00").max()
 
         ws["C18"] = wu_data.iloc[-1, 0]
         ws["D18"] = round(wu_day[0])
@@ -638,7 +650,7 @@ class Crawler:
         suzhou_data = pd.read_csv(self.suzhou_data_path, index_col=0, parse_dates=True, na_values=["-", "—", ""])
         suzhou_data = suzhou_data.loc[:, ["PM2_5", "PM10", "NO2", "O3"]]
         suzhou_day = suzhou_data.mean()
-        suzhou_day_o38h = suzhou_data["O3"].rolling(8, 8).mean().max()
+        suzhou_day_o38h = suzhou_data["O3"].rolling(8, 6).mean().between_time("08:00","00:00").max()
 
         ws["C19"] = suzhou_data.iloc[-1, 0]
         ws["D19"] = round(suzhou_day[0])

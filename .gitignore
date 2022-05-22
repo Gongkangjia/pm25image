@@ -11,7 +11,6 @@ rt/*
 history/*
 api/*
 !.gitkeep
-config.py
 
 # C extensions
 *.so

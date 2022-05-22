@@ -104,7 +104,7 @@ class EmailPush(Push):
         sta = self.yag.send(to=[
             "qq45934861@163.com",
             "njhbjdqcgy@163.com",
-            # "kjgong@kjong.cn"
+#            "kjgong@kjong.cn"
         ],
             cc="kjgong@kjgong.cn",
             subject=subject,
