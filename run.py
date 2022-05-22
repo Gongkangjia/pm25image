@@ -43,7 +43,7 @@ def main(date,test):
     output_excel = ExcelGenerator(df).run()
 
     ###邮箱推送
-    if False:
+    if True:
         push  = EmailPush()
         dt = time_h.format('MM月DD日HH时')
         contents = []

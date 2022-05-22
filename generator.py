@@ -129,7 +129,7 @@ class ImageGenerator(GeneratorBase):
                 self.draw_rec_text((index + 3, species_index + 2), row_data.VALUE, fill=row_data.COLOR)
 
             # 画城市
-            df_species = self.df.loc[["南京", "苏州", "无锡"], species].to_frame(name="VALUE")
+            df_species = self.df.loc[["南京", "无锡","苏州"], species].to_frame(name="VALUE")
             df_species["COLOR"] = "black"
             df_species.loc[df_species["VALUE"] < df_species.at["南京", "VALUE"], "COLOR"] = "green"
             df_species = df_species.reset_index()
