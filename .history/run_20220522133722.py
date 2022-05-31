@@ -43,7 +43,7 @@ def main(date,test):
     output_excel = ExcelGenerator(df).run()
 
     ###邮箱推送
-    if not test:
+    if True:
         push  = EmailPush()
         dt = time_h.format('MM月DD日HH时')
         contents = []
@@ -60,12 +60,12 @@ def main(date,test):
         push.mail(f"【空气质量速报】{dt}", contents=contents, attachments=[str(output_excel)])
 
 
-        push = WeComPush()
-        push.send(output_image, msgtype="image",touser="GongKangJia")
-        push.send(output_excel, msgtype="file", touser="GongKangJia")
+    push = WeComPush()
+    push.send(output_image, msgtype="image",touser="GongKangJia")
+    push.send(output_excel, msgtype="file", touser="GongKangJia")
 
 
-        datetime_tag_file.write_text(datetime_tag)
+    datetime_tag_file.write_text(datetime_tag)
 #
 # @click.command()
 # @click.option("-f", "--force",is_flag=True,help='Run force')

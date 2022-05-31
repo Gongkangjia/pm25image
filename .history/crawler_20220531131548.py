@@ -54,9 +54,8 @@ class Cnemc(Base):
     def _to_int(x):
         try:
             if int(x)>0:
-                return int(x)
-            else:
-                np.nan
+                
+            return int(x)
         except (ValueError, TypeError) as e:
             return np.nan
 
