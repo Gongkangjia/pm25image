@@ -147,7 +147,7 @@ class ExcelGenerator(GeneratorBase):
     def __init__(self, df):
         super(ExcelGenerator, self).__init__(df)
         self.output = self.output_dir.joinpath(f"{self.time_h.format('YYYY-MM-DDTHH')}.xlsx")
-        self.wb = load_workbook(self.root.joinpath("static").joinpath("template7.xlsx"))
+        self.wb = load_workbook(self.root.joinpath("static").joinpath("template6.xlsx"))
 
     @staticmethod
     def _write_row(ws, row_no, data_list):
