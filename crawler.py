@@ -159,6 +159,7 @@ class Cnemc(Base):
 
         df = pd.concat(data_list,)
         df = df.reset_index()
+        df.loc[df["PM2_5"] > df["PM10"], "PM10"] = np.nan
         return df
 
         # day = df.groupby("NAME").mean()
