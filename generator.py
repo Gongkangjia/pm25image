@@ -35,6 +35,7 @@ class ImageGenerator(GeneratorBase):
         realtime = df.loc[self.time_h.format("YYYY-MM-DD HH:00")]
         day = df.groupby("NAME").mean()
         day["MDA8"] = df.groupby("NAME")["O3_8H"].max()
+        day.at["南京","MDA8"] = day.loc[STATIONS_CNEMC.keys(),"MDA8"].mean()
         res_df = realtime.merge(day, left_on="NAME", right_index=True, suffixes=["_RT", "_DAY"])
         res_df = res_df.set_index("NAME")
         return res_df
@@ -147,7 +148,7 @@ class ExcelGenerator(GeneratorBase):
     def __init__(self, df):
         super(ExcelGenerator, self).__init__(df)
         self.output = self.output_dir.joinpath(f"{self.time_h.format('YYYY-MM-DDTHH')}.xlsx")
-        self.wb = load_workbook(self.root.joinpath("static").joinpath("template7.xlsx"))
+        self.wb = load_workbook(self.root.joinpath("static").joinpath("template8.xlsx"))
 
     @staticmethod
     def _write_row(ws, row_no, data_list):

@@ -21,8 +21,9 @@ logger.add(f"logs/{TODAY}.log")
 
 @click.option("-t", "--test",is_flag=True,help='test')
 @click.option("-d", "--date",help='report date')
+@click.option("-f", "--force",is_flag=True,help='Run force')
 @click.command()
-def main(date,test):
+def main(date,test,force):
     datetime_tag_file = Path("datetime.tag")
     if datetime_tag_file.is_file():
         last_tag = datetime_tag_file.read_text().strip()
@@ -33,7 +34,7 @@ def main(date,test):
     logger.info("now_tag=>{}",datetime_tag)
 
     if not test:
-        if datetime_tag == last_tag:
+        if datetime_tag == last_tag and not force:
             logger.error("本小时已经推送过=>{}",datetime_tag)
             return None
 
@@ -68,7 +69,6 @@ def main(date,test):
         datetime_tag_file.write_text(datetime_tag)
 #
 # @click.command()
-# @click.option("-f", "--force",is_flag=True,help='Run force')
 # @click.option("-d", "--daemon",is_flag=True,help='Run daemon')
 # def main(force, daemon):
 #     if force:
