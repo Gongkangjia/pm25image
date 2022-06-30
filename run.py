@@ -7,7 +7,7 @@ import time
 import click
 import yagmail
 
-from crawler import Cnemc
+from crawler import Cnemc,Moji
 from generator import ExcelGenerator,ImageGenerator
 from push import WeComPush, EmailPush
 
@@ -22,8 +22,9 @@ logger.add(f"logs/{TODAY}.log")
 @click.option("-t", "--test",is_flag=True,help='test')
 @click.option("-d", "--date",help='report date')
 @click.option("-f", "--force",is_flag=True,help='Run force')
+@click.option("-s", "--source",help='Data source')
 @click.command()
-def main(date,test,force):
+def main(date,test,force,source):
     datetime_tag_file = Path("datetime.tag")
     if datetime_tag_file.is_file():
         last_tag = datetime_tag_file.read_text().strip()
@@ -39,7 +40,16 @@ def main(date,test,force):
             return None
 
     time_h = arrow.now().shift(minutes=-30)
-    df = Cnemc().run()
+    if source == "cneme":
+        df = Cnemc().run()
+        logger.info("数据源为CNEME")
+    elif source == "moji":
+        df = Moji().run()
+        logger.info("数据源为Moji")
+    else:
+        df = Cnemc().run()
+        logger.info("数据源为CNEME")
+
     output_image = ImageGenerator(df).run()
     output_excel = ExcelGenerator(df).run()
 
