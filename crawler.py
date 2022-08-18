@@ -47,7 +47,7 @@ class Cnemc(Base):
             return key, value
 
     def _get_action(self, action):
-        res_action = requests.get(self.base + action, headers={'Content-Type': 'application/msbin1'})
+        res_action = requests.get(self.base + action, headers={'Content-Type': 'application/msbin1'},verify=False)
         return self._wcf2json(res_action.content)
 
     @staticmethod
