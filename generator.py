@@ -81,7 +81,11 @@ class ImageGenerator(GeneratorBase):
         width = sum(self.columns_width)
         height = sum(self.row_height)
         self.ax = Image.new(mode="RGB", size=(width + 20, height + 20), color="white")
+        logo = Image.open(self.root.joinpath("static").joinpath("logo.v1.png"))
+        logo = logo.resize((width, int(logo.height*width/logo.width)))
+        self.ax.paste(logo)
         self.drawer = ImageDraw.Draw(self.ax)
+
         logger.info("画大矩形")
         x, y, w, h = *self.start, width, height
         self.drawer.rectangle(xy=((x, y), (x + w, y + h)), fill=None, outline="black", width=12)
