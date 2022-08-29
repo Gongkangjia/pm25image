@@ -17,14 +17,16 @@ class GeneratorBase:
 
 
 class ImageGenerator(GeneratorBase):
-    def __init__(self, df):
+    def __init__(self, df,is_jn=False):
         super(ImageGenerator, self).__init__(df)
+        self.is_jn  = is_jn
         self.df = self.preprocessing(df)
         self.ax = None
         self.columns_width = np.array([8, 12, 10, 10, 10, 10, 10, 10, 10, 10]) * 60
         self.row_height = [180, 360, 180, *[180] * 16]
         self.fonesize = 140
         self.font = ImageFont.truetype(font=str(self.root / 'static/kjgong.ttf'), size=self.fonesize)
+        self.fontbd = ImageFont.truetype(font=str(self.root / 'static/Times New Roman Bold.ttf'), size=self.fonesize)
         self.linewidth = 6
         self.spacing = self.fonesize * 0.1
         self.start = (10, 10)
@@ -40,16 +42,27 @@ class ImageGenerator(GeneratorBase):
         res_df = res_df.set_index("NAME")
         return res_df
 
-    def draw_rec_text(self, loc, text, fill="black"):
+    def draw_rec_text(self, loc, text, fill="black",font=None,rfill=None):
+        if font is None:
+            font =  self.font
+        else:
+            font = self.fontbd
+
         x, y, w, h = self.get_location(*loc)
-        self.drawer.rectangle(xy=((x, y), (x + w, y + h)), fill=None,
+
+
+        self.drawer.rectangle(xy=((x, y), (x + w, y + h)), fill=rfill,
                               outline="black", width=self.linewidth)
+
         text = self.get_str(text)
         for i, t in enumerate(text):
-            fsize = self.font.getsize(t)
+            fsize = font.getsize(t)
             height_offset = (i - len(text) / 2 + 0.5) * (self.spacing + self.fonesize)
-            self.drawer.text(xy=(
-                x + w / 2 - fsize[0] / 2, y + h / 2 - fsize[1] / 2 + height_offset), text=t, fill=fill, font=self.font)
+            self.drawer.text(xy=(x + w / 2 - fsize[0] / 2, y + h / 2 - fsize[1] / 2 + height_offset),
+                            text=t,
+                            fill=fill,
+                            font=font
+               )
 
     def get_location(self, row_start, col_start, row_end=None, col_end=None, ):
         if not (row_end or col_end):
@@ -75,7 +88,10 @@ class ImageGenerator(GeneratorBase):
     def run(self, image_time=None):
         if image_time is None:
             image_time = arrow.now().shift(minutes=-30)
-        self.output = self.output_dir.joinpath(f"{image_time.format('YYYY-MM-DDTHH')}.png")
+        if self.is_jn:
+            self.output = self.output_dir.joinpath(f"JN_{image_time.format('YYYY-MM-DDTHH')}.png")
+        else:
+            self.output = self.output_dir.joinpath(f"{image_time.format('YYYY-MM-DDTHH')}.png")
 
         logger.info("创建画布")
         width = sum(self.columns_width)
@@ -115,10 +131,17 @@ class ImageGenerator(GeneratorBase):
 
         # 开始画数据
         for station_index, station_name, in enumerate(STATIONS_CNEMC.keys()):
-            self.draw_rec_text((station_index + 3, 0), station_index + 1)
-            self.draw_rec_text((station_index + 3, 1), station_name)
+            if station_name == "彩虹桥":
+                self.draw_rec_text((station_index + 3, 0), station_index + 1,font=True,rfill="#ffff00")
+                self.draw_rec_text((station_index + 3, 1), station_name,rfill="#ffff00")
+            else:
+                self.draw_rec_text((station_index + 3, 0), station_index + 1)
+                self.draw_rec_text((station_index + 3, 1), station_name)
+        if self.is_jn:
+            self.draw_rec_text((16, 0, 16, 1), "全市",rfill="#ffff00")  
+        else:
+            self.draw_rec_text((16, 0, 16, 1), "全市")  
 
-        self.draw_rec_text((16, 0, 16, 1), "全市")
         self.draw_rec_text((17, 0, 17, 1), "无锡")
         self.draw_rec_text((18, 0, 18, 1), "苏州")
 
@@ -127,20 +150,49 @@ class ImageGenerator(GeneratorBase):
             # 画国控点
             df_species = self.df.loc[STATIONS_CNEMC.keys(), species].to_frame(name="VALUE")
             df_species["COLOR"] = "black"
+            df_species["FONT"] = None
+            df_species.loc["彩虹桥","FONT"]=True
+
+            df_species["RFILL"] = None
+            df_species.loc["彩虹桥","RFILL"]="#ffff00"
+
             df_species.loc[df_species["VALUE"].isin(df_species["VALUE"].nlargest(3)), "COLOR"] = "red"
             df_species = df_species.reset_index()
             for index, row_data in df_species.iterrows():
-                print(index, species_index)
-                self.draw_rec_text((index + 3, species_index + 2), row_data.VALUE, fill=row_data.COLOR)
+                # print(index, species_index)
+                logger.info(df_species)
+                if self.is_jn and  row_data.FONT:
+                    self.draw_rec_text((index + 3, species_index + 2),
+                     row_data.VALUE,
+                     fill=row_data.COLOR,
+                     font=True,
+                     rfill=row_data.RFILL
+                     )
+                else:
+                    self.draw_rec_text((index + 3, species_index + 2), row_data.VALUE, fill=row_data.COLOR)
+
 
             # 画城市
             df_species = self.df.loc[["南京", "无锡","苏州"], species].to_frame(name="VALUE")
             df_species["COLOR"] = "black"
+            df_species["FONT"] = None
+            df_species.loc["南京","FONT"]=True
+            df_species["RFILL"] = None
+            df_species.loc["南京","RFILL"]="#ffff00"
+
             df_species.loc[df_species["VALUE"] < df_species.at["南京", "VALUE"], "COLOR"] = "green"
             df_species = df_species.reset_index()
             for index, row_data in df_species.iterrows():
                 print(index, species_index)
-                self.draw_rec_text((index + 16, species_index + 2), row_data.VALUE, fill=row_data.COLOR)
+                if self.is_jn and row_data.FONT:
+                    self.draw_rec_text((index + 16, species_index + 2), 
+                    row_data.VALUE,
+                     fill=row_data.COLOR,
+                     font=True,
+                     rfill=row_data.RFILL
+                     )
+                else:
+                    self.draw_rec_text((index + 16, species_index + 2), row_data.VALUE, fill=row_data.COLOR)
 
         logger.info("绘制完整正在保存=>{}", self.output)
         self.ax = self.ax.resize((2000, int(self.ax.size[1] / self.ax.size[0] * 2000)), Image.ANTIALIAS)

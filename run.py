@@ -52,6 +52,7 @@ def main(date,test,force,source):
 
     output_image = ImageGenerator(df).run()
     output_excel = ExcelGenerator(df).run()
+    jnoutput_image = ImageGenerator(df,is_jn=True).run()
 
     ###邮箱推送
     if not test:
@@ -74,8 +75,7 @@ def main(date,test,force,source):
         push = WeComPush()
         push.send(output_image, msgtype="image",touser="GongKangJia")
         push.send(output_excel, msgtype="file", touser="GongKangJia")
-
-
+        push.send(jnoutput_image, msgtype="image", touser="GongKangJia")
         datetime_tag_file.write_text(datetime_tag)
 #
 # @click.command()
