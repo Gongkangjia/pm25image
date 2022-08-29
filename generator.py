@@ -131,7 +131,7 @@ class ImageGenerator(GeneratorBase):
 
         # 开始画数据
         for station_index, station_name, in enumerate(STATIONS_CNEMC.keys()):
-            if station_name == "彩虹桥":
+            if station_name == "彩虹桥" and self.is_jn:
                 self.draw_rec_text((station_index + 3, 0), station_index + 1,font=True,rfill="#ffff00")
                 self.draw_rec_text((station_index + 3, 1), station_name,rfill="#ffff00")
             else:
