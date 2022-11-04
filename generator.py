@@ -240,7 +240,7 @@ if __name__ == "__main__":
 
     c = Cnemc()
 
-    g = Excel(df=c.run())
+    g = ExcelGenerator(df=c.run())
     g.run()
     # print(g.root)
     # d = DrawImage()

@@ -47,7 +47,7 @@ class Cnemc(Base):
             return key, value
 
     def _get_action(self, action):
-        res_action = requests.get(self.base + action, headers={'Content-Type': 'application/msbin1'},verify=False)
+        res_action = requests.get(self.base + action, headers={'Content-Type': 'application/msbin1'})
         return self._wcf2json(res_action.content)
 
     @staticmethod
@@ -360,7 +360,7 @@ class Moji():
 
 
 if __name__ == '__main__':
-    c = Cnemc()
+    c = Moji()
     # a = c.get_station_df(station_code="3422A", )
     # a = c.get_city_df(city_code="320100", start=arrow.get("2022-04-23 00:00:00"))
 
