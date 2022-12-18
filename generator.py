@@ -160,7 +160,7 @@ class ImageGenerator(GeneratorBase):
             df_species = df_species.reset_index()
             for index, row_data in df_species.iterrows():
                 # print(index, species_index)
-                logger.info(df_species)
+                # logger.info(df_species)
                 if self.is_jn and  row_data.FONT:
                     self.draw_rec_text((index + 3, species_index + 2),
                      row_data.VALUE,

@@ -6,10 +6,13 @@ import arrow
 import time 
 import click
 import yagmail
+from func_timeout import FunctionTimedOut
 
 from crawler import Cnemc,Moji
 from generator import ExcelGenerator,ImageGenerator
-from push import WeComPush, EmailPush
+from push import WeComPush, EmailPush, WechatPush
+
+
 
 
 os.chdir(Path(__file__).absolute().parent)
@@ -72,6 +75,15 @@ def main(date,test,force,source):
         push.mail(f"【空气质量速报】{dt}", contents=contents, attachments=[str(output_excel)])
         datetime_tag_file.write_text(datetime_tag)
 
+    #推送江宁的
+    try:
+        logger.info("开始微信推送")
+        wechat = WechatPush()
+        wechat.send(str(jnoutput_image),msgtype="image",to="ZeroDivsionError")
+    except FunctionTimedOut as e:
+        logger.error("江宁微信推送失败")
+        push = WeComPush()
+        push.send("江宁微信推送失败!", msgtype="text", touser="GongKangJia")
 
     push = WeComPush()
     push.send(output_image, msgtype="image",touser="GongKangJia")
@@ -101,5 +113,6 @@ def main(date,test,force,source):
 #         run()
 
 if __name__ == "__main__":
-    main()
-
+    # main()
+    wechat = WechatPush()
+    wechat.send("./output/2022-12-18T23.png",msgtype="image",to="Gongbot")

@@ -7,6 +7,8 @@ import shortuuid
 import arrow
 from pathlib import Path
 import json
+import itchat
+from func_timeout import func_set_timeout
 
 class WeComPush:
     def __init__(self):
@@ -148,9 +150,30 @@ class EmailPush():
         else:
             logger.error("邮件发送不成功 => {}", sta)
 
+class WechatPush():
+    def __init__(self) -> None:
+        pass
+
+    @func_set_timeout(60)
+    def send(self,content, msgtype=None, to=""):
+        itchat.auto_login(hotReload=True,enableCmdQR=2)
+        tos = itchat.search_friends(to) or itchat.search_chatrooms(to)
+        if not tos:
+            logger.error("没有找到用户或聊天室=>{}",to)
+            return False
+        to = tos[0].UserName
+        if msgtype == "image":
+            itchat.send_image(content,toUserName=to)
+        else:
+            itchat.send_file(content,toUserName=to)
+
+
 
 if __name__ == "__main__":
-    push = WeComPush()
-    push.send("ddddd",touser="noreply")
-    #push = EmailPush()
-    #push.run()
+    # push = WeComPush()
+    # push.send("ddddd",touser="noreply")
+    wechat = WechatPush()
+    wechat.send("./output/2022-12-18T23.png",msgtype="image",to="Gongbot")
+    # itchat.auto_login(hotReload=True,enableCmdQR=2)
+    # itchat.send_image("./output/2022-12-18T23.png",toUserName="filehelper")
+    # itchat.send_msg("ddd",toUserName="Gongbot")
