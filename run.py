@@ -70,13 +70,15 @@ def main(date,test,force,source):
         """
         contents.append(footer)
         push.mail(f"【空气质量速报】{dt}", contents=contents, attachments=[str(output_excel)])
-
-
-        push = WeComPush()
-        push.send(output_image, msgtype="image",touser="GongKangJia")
-        push.send(output_excel, msgtype="file", touser="GongKangJia")
-        push.send(jnoutput_image, msgtype="image", touser="GongKangJia")
         datetime_tag_file.write_text(datetime_tag)
+
+
+    push = WeComPush()
+    push.send(output_image, msgtype="image",touser="GongKangJia")
+    push.send(output_excel, msgtype="file", touser="GongKangJia")
+    push.send(jnoutput_image, msgtype="file", touser="GongKangJia")
+    push.send(str(jnoutput_image), msgtype="text", touser="GongKangJia")
+    push.send(jnoutput_image, msgtype="image", touser="noreply")
 #
 # @click.command()
 # @click.option("-d", "--daemon",is_flag=True,help='Run daemon')

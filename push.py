@@ -150,7 +150,7 @@ class EmailPush():
 
 
 if __name__ == "__main__":
-    # push = QiyeWechatPush()
-    # push.run()
-    push = EmailPush()
-    push.run()
+    push = WeComPush()
+    push.send("ddddd",touser="noreply")
+    #push = EmailPush()
+    #push.run()
