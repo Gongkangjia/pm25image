@@ -1,4 +1,7 @@
 # OCR
+
+async_components = '0'
+
 AK = "midlHg574d43mrn7EgEUrT6u"
 SK = "tU4CmIzI94HVFoyzmC89jeILdZvxh2UI"
 
