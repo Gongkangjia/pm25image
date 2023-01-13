@@ -166,6 +166,7 @@ class WechatPush():
             itchat.send_image(content,toUserName=to)
         else:
             itchat.send_file(content,toUserName=to)
+        itchat.dump_login_status()
 
 
 
