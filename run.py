@@ -9,7 +9,7 @@ import yagmail
 from func_timeout import FunctionTimedOut
 
 from crawler import Cnemc,Moji
-from generator import ExcelGenerator,ImageGenerator
+from generator import ExcelGenerator,ImageGenerator,JiangningImage
 from push import WeComPush, EmailPush, WechatPush
 
 
@@ -55,7 +55,7 @@ def main(date,test,force,source):
 
     output_image = ImageGenerator(df).run()
     output_excel = ExcelGenerator(df).run()
-    jnoutput_image = ImageGenerator(df,is_jn=True).run()
+    jnoutput_image = JiangningImage(df).run()
 
     ###邮箱推送
     if not test:
