@@ -9,7 +9,7 @@ import yagmail
 from func_timeout import FunctionTimedOut
 
 from crawler import Cnemc,Moji
-from generator import ExcelGenerator,ImageGenerator,JiangningImage
+from generator import ExcelGenerator,ImageGenerator,JiangningImage,JiangningTextGenerator
 from push import WeComPush, EmailPush, WechatPush
 
 
@@ -56,6 +56,8 @@ def main(date,test,force,source):
     output_image = ImageGenerator(df).run()
     output_excel = ExcelGenerator(df).run()
     jnoutput_image = JiangningImage(df).run()
+    jiangning_text = JiangningTextGenerator(df).run()
+    print(jiangning_text)
 
     ###邮箱推送
     if not test:
@@ -88,9 +90,11 @@ def main(date,test,force,source):
     push = WeComPush()
     push.send(output_image, msgtype="image",touser="GongKangJia")
     push.send(output_excel, msgtype="file", touser="GongKangJia")
-    push.send(jnoutput_image, msgtype="image", touser="GongKangJia")
-    push.send(jnoutput_image, msgtype="image", touser="noreply")
+    # push.send(jnoutput_image, msgtype="image", touser="GongKangJia")
+    # push.send(jnoutput_image, msgtype="image", touser="noreply")
     #push.send(jnoutput_image, msgtype="image", touser="ZhangHaoRan")
+    # push.send(jiangning_text, totag=5)
+    push.send(jiangning_text, totag=5)
     push.send(jnoutput_image, msgtype="image", totag=5)
 #
 # @click.command()

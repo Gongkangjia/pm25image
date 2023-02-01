@@ -470,10 +470,69 @@ class JiangningImage(GeneratorBase):
         return output
 
 
+class JiangningTextGenerator(GeneratorBase):
+    def __init__(self, df, is_jn=False):
+        super(JiangningTextGenerator, self).__init__(df)
+        self.df = self.preprocessing(df)
+
+    def preprocessing(self, df):
+        df = df.set_index("DATETIME")
+        df = df.rename({"PM2_5": "PM25"}, axis=1)
+        realtime = df.loc[self.time_h.format("YYYY-MM-DD HH:00")]
+        day = df.groupby("NAME").mean()
+        day["MDA8"] = df.groupby("NAME")["O3_8H"].max()
+        day.at["南京", "MDA8"] = day.loc[STATIONS_CNEMC.keys(), "MDA8"].mean()
+        res_df = realtime.merge(day, left_on="NAME",
+                                right_index=True, suffixes=["_RT", "_DAY"])
+        res_df = res_df.round(0).set_index("NAME")
+        rank = res_df.loc[STATIONS_CNEMC.keys()].rank(method="min").rename(
+            lambda x: f"{x}_RANK", axis=1)
+        res_df = res_df.join(rank)
+        return res_df
+
+    def run(self):
+        print(self.df.T)
+        output = self.output_dir.joinpath(f"JN_{self.time_h.format('YYYY-MM-DDTHH')}.txt")
+        jiangning = any((
+            self.df.at["彩虹桥", "PM25_DAY"] > 75,
+            self.df.at["彩虹桥", "PM10_DAY"] > 150,
+            self.df.at["彩虹桥", "NO2_DAY"] > 80,
+            self.df.at["彩虹桥", "MDA8"] > 160,
+        ))
+        nanjing = any((
+            self.df.at["南京", "PM25_DAY"] > 75,
+            self.df.at["南京", "PM10_DAY"] > 150,
+            self.df.at["南京", "NO2_DAY"] > 80,
+            self.df.at["南京", "MDA8"] > 160,
+        ))
+        logger.info(f"超标,(PM25_DAY,PM10_DAY,NO2_DAY,MDA8)=>{jiangning},{nanjing}")
+
+        if self.time_h.hour in range(8, 17):
+            res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况"
+
+        elif self.time_h.hour in range(17, 24):
+            if not jiangning and not nanjing:
+                res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，彩虹桥站点和南京市均成功保良！"
+            elif jiangning and nanjing:
+                res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，彩虹桥站点和南京市均暂未保良！"
+            elif jiangning and not nanjing:
+                res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，彩虹桥站点暂未保良，南京市成功保良！"
+            elif not jiangning and nanjing:
+                res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，彩虹桥站点成功保良，南京市暂未保良！"
+            else:
+                pass
+        else:
+            res= None
+
+        logger.info(res)
+        output.write_text(res)
+        return res
+
+
 if __name__ == "__main__":
     from crawler import Cnemc
 
     c = Cnemc()
 
-    g = JiangningImage(df=c.run())
-    g.run()
+    g = JiangningTextGenerator(df=c.run())
+    res = g.run()
