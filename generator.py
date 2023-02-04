@@ -490,6 +490,15 @@ class JiangningTextGenerator(GeneratorBase):
         res_df = res_df.join(rank)
         return res_df
 
+    @staticmethod
+    def get_str(x, **kw):
+        if isinstance(x, str):
+            return x
+        try:
+            return str(round(x, **kw))
+        except Exception as e:
+            return "-"
+
     def run(self):
         print(self.df.T)
         output = self.output_dir.joinpath(f"JN_{self.time_h.format('YYYY-MM-DDTHH')}.txt")
@@ -511,16 +520,23 @@ class JiangningTextGenerator(GeneratorBase):
             res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况"
 
         elif self.time_h.hour in range(17, 24):
-            if not jiangning and not nanjing:
-                res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，彩虹桥站点和南京市均成功保良！"
-            elif jiangning and nanjing:
-                res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，彩虹桥站点和南京市均暂未保良！"
-            elif jiangning and not nanjing:
-                res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，彩虹桥站点暂未保良，南京市成功保良！"
-            elif not jiangning and nanjing:
-                res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，彩虹桥站点成功保良，南京市暂未保良！"
-            else:
-                pass
+            pm25_rt = self.get_str(self.df.at["彩虹桥", "PM25_RT"]) 
+            pm25_rt_rank = self.get_str(self.df.at["彩虹桥", "PM25_RT_RANK"]) 
+            pm25_day = self.get_str(self.df.at["彩虹桥", "PM25_DAY"]) 
+            pm25_day_rank = self.get_str(self.df.at["彩虹桥", "PM25_DAY_RANK"]) 
+
+            pm10_rt = self.get_str(self.df.at["彩虹桥", "PM10_RT"]) 
+            pm10_rt_rank = self.get_str(self.df.at["彩虹桥", "PM10_RT_RANK"]) 
+            pm10_day = self.get_str(self.df.at["彩虹桥", "PM10_DAY"]) 
+            pm10_day_rank = self.get_str(self.df.at["彩虹桥", "PM10_DAY_RANK"]) 
+            
+            res = (
+                f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况， 截止目前为止，"            
+                f"彩虹桥站点PM2.5实时浓度为{pm25_rt}微克/立方米，排名第{pm25_rt_rank}，"
+                f"当日累计{pm25_day}微克/立方米，排名第{pm25_day_rank}；"
+                f"PM10实时浓度为{pm10_rt}微克/立方米，排名第{pm10_rt_rank}，"
+                f"当日累计{pm10_day}微克/立方米，排名第{pm10_day_rank}。"
+                )
         else:
             res= None
 
