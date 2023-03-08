@@ -14,6 +14,7 @@ class GeneratorBase:
         self.root = Path(__file__).absolute().parent
         self.output_dir = self.root.joinpath("output")
         self.time_h = arrow.now().shift(minutes=-30)
+        self.rt_count = df.loc[df.DATETIME.dt.hour==self.time_h.hour,"PM2_5"].count()
 
 
 class ImageGenerator(GeneratorBase):
@@ -90,6 +91,8 @@ class ImageGenerator(GeneratorBase):
             return ["-"]
 
     def run(self, image_time=None):
+        if self.rt_count < 10:
+            return False
         if image_time is None:
             image_time = arrow.now().shift(minutes=-30)
         if self.is_jn:
@@ -232,6 +235,9 @@ class ExcelGenerator(GeneratorBase):
             _ = ws.cell(column=col + 1, row=row_no, value=i)
 
     def run(self, image_time=None):
+        if self.rt_count < 10:
+            return False
+
         if image_time is None:
             image_time = arrow.now().shift(minutes=-30)
         ws = self.wb["DATA"]
@@ -336,6 +342,9 @@ class JiangningImage(GeneratorBase):
             return [""]
 
     def run(self):
+        if self.rt_count < 10:
+            return False
+
         output = self.output_dir.joinpath(
             f"JN_{self.time_h.format('YYYY-MM-DDTHH')}.png")
         logger.info("创建画布")
@@ -500,6 +509,8 @@ class JiangningTextGenerator(GeneratorBase):
             return "-"
 
     def run(self):
+        if self.rt_count < 10:
+            return False
         print(self.df.T)
         output = self.output_dir.joinpath(f"JN_{self.time_h.format('YYYY-MM-DDTHH')}.txt")
         jiangning = any((
@@ -546,9 +557,9 @@ class JiangningTextGenerator(GeneratorBase):
 
 
 if __name__ == "__main__":
-    from crawler import Cnemc
+    from crawler import Cnemc,Moji
 
-    c = Cnemc()
-
+    c = Moji()
     g = JiangningTextGenerator(df=c.run())
-    res = g.run()
+    print(g.rt_count)
+    print(g.run())

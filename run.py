@@ -60,7 +60,7 @@ def main(date,test,force,source):
     print(jiangning_text)
 
     ###邮箱推送
-    if not test:
+    if not test and output_image and output_excel:
         push  = EmailPush()
         dt = time_h.format('MM月DD日HH时')
         contents = []
@@ -86,16 +86,22 @@ def main(date,test,force,source):
 #            logger.error("江宁微信推送失败")
 #            push = WeComPush()
 #            push.send("江宁微信推送失败!", msgtype="text", touser="GongKangJia")
-
     push = WeComPush()
     push.send(output_image, msgtype="image",touser="GongKangJia")
     push.send(output_excel, msgtype="file", touser="GongKangJia")
-    # push.send(jnoutput_image, msgtype="image", touser="GongKangJia")
-    # push.send(jnoutput_image, msgtype="image", touser="noreply")
-    #push.send(jnoutput_image, msgtype="image", touser="ZhangHaoRan")
-    # push.send(jiangning_text, totag=5)
-    push.send(jiangning_text, totag=5)
-    push.send(jnoutput_image, msgtype="image", totag=5)
+
+
+    if jnoutput_image and jiangning_text:
+        # push.send(jnoutput_image, msgtype="image", touser="GongKangJia")
+        # push.send(jnoutput_image, msgtype="image", touser="noreply")
+        # push.send(jnoutput_image, msgtype="image", touser="ZhangHaoRan")
+        # push.send(jiangning_text, totag=5)
+        push.send(jiangning_text, totag=5)
+        push.send(jnoutput_image, msgtype="image", totag=5)
+
+    else:
+        push.send("小时推送暂时无数据！", totag=5)
+
 #
 # @click.command()
 # @click.option("-d", "--daemon",is_flag=True,help='Run daemon')

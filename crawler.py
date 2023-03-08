@@ -120,7 +120,11 @@ class Cnemc(Base):
         if end:
             arrow_end = arrow.get(end)
         else:
-            arrow_end = arrow.now()
+            now = arrow.now()
+            if now.minute < 30:
+                arrow_end = arrow.now().shift(hours=-1)
+            else:
+                arrow_end = arrow.now()
 
         logger.info("start=>{}", arrow_start)
         logger.info("end=>{}", arrow_end)
@@ -273,7 +277,11 @@ class Moji():
         if end:
             arrow_end = arrow.get(end)
         else:
-            arrow_end = arrow.now()
+            now = arrow.now()
+            if now.minute < 30:
+                arrow_end = arrow.now().shift(hours=-1)
+            else:
+                arrow_end = arrow.now()
 
         dt_full = pd.Series(pd.date_range(start=arrow_start.format("YYYY-MM-DD HH:mm:ss"),
                                           end=arrow_end.format("YYYY-MM-DD HH:mm:ss"), freq="H"),
@@ -360,7 +368,7 @@ class Moji():
 
 
 if __name__ == '__main__':
-    c = Cnemc()
+    c = Moji()
     # a = c.get_station_df(station_code="3422A", )
     # a = c.get_city_df(city_code="320100", start=arrow.get("2022-04-23 00:00:00"))
 
@@ -369,6 +377,5 @@ if __name__ == '__main__':
     # print(a)
     # print(a)
     # print(a[])
-    df1 = c.run()
-    print(df1)
-    df1.to_csv("test.csv")
+    df = c.run()
+    print(df)
