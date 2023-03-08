@@ -58,7 +58,7 @@ def main(date,test,force,source):
     jnoutput_image = JiangningImage(df).run()
     jiangning_text = JiangningTextGenerator(df).run()
     print(jiangning_text)
-    push = WeComPush()
+    
     ###邮箱推送
     if not test and output_image and output_excel:
         push  = EmailPush()
@@ -86,6 +86,7 @@ def main(date,test,force,source):
 #            logger.error("江宁微信推送失败")
 #            push = WeComPush()
 #            push.send("江宁微信推送失败!", msgtype="text", touser="GongKangJia")
+        push = WeComPush()
         push.send(output_image, msgtype="image",touser="GongKangJia")
         push.send(output_excel, msgtype="file", touser="GongKangJia")
 
@@ -94,6 +95,7 @@ def main(date,test,force,source):
         # push.send(jnoutput_image, msgtype="image", touser="noreply")
         # push.send(jnoutput_image, msgtype="image", touser="ZhangHaoRan")
         # push.send(jiangning_text, totag=5)
+        push = WeComPush()
         push.send(jiangning_text, totag=5)
         push.send(jnoutput_image, msgtype="image", totag=5)
 
