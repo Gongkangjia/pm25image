@@ -35,11 +35,12 @@ def main(date,test,force,source):
         last_tag = None
     logger.info("last_tag=>{}",last_tag)
     now = arrow.now()
+
     if now.minute < 30:
         datetime_tag = now.shift(hours=-1).format("YYYY-MM-DDTHH")
     else:
-        datetime_tag = now.shift.format("YYYY-MM-DDTHH")
-        
+        datetime_tag = now.format("YYYY-MM-DDTHH")
+
     logger.info("now_tag=>{}",datetime_tag)
 
     if not test:
@@ -105,6 +106,7 @@ def main(date,test,force,source):
         push.send(jnoutput_image, msgtype="image", totag=5)
 
     else:
+        push = WeComPush()
         push.send("小时推送暂时无数据！", totag=5)
 
 #
