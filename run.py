@@ -82,19 +82,10 @@ def main(date,test,force,source):
         contents.append(footer)
         push.mail(f"【空气质量速报】{dt}", contents=contents, attachments=[str(output_excel)])
         datetime_tag_file.write_text(datetime_tag)
-
-        #推送江宁的
-#        try:
-#           logger.info("开始微信推送")
-#            wechat = WechatPush()
-#            wechat.send(str(jnoutput_image),msgtype="image",to="指挥中心")
-#        except FunctionTimedOut as e:
-#            logger.error("江宁微信推送失败")
-#            push = WeComPush()
-#            push.send("江宁微信推送失败!", msgtype="text", touser="GongKangJia")
-        push = WeComPush()
-        push.send(output_image, msgtype="image",touser="GongKangJia")
-        push.send(output_excel, msgtype="file", touser="GongKangJia")
+        
+    push = WeComPush()
+    push.send(output_image, msgtype="image",touser="GongKangJia")
+    push.send(output_excel, msgtype="file", touser="GongKangJia")
 
     if jnoutput_image and jiangning_text:
         # push.send(jnoutput_image, msgtype="image", touser="GongKangJia")
@@ -109,26 +100,6 @@ def main(date,test,force,source):
         push = WeComPush()
         push.send("小时推送暂时无数据！", totag=5)
 
-#
-# @click.command()
-# @click.option("-d", "--daemon",is_flag=True,help='Run daemon')
-# def main(force, daemon):
-#     if force:
-#         run(force)
-#         return
-#     if daemon:
-#         while True:
-#             now =  arrow.now()
-#             logger.info("现在的时间=>{}",now.format())
-#             # As crond "*/5"
-#             delay = 300-int(arrow.now().timestamp())%300
-#             logger.info("下次执行时间为=>{}",now.shift(seconds=delay).format())
-#             logger.info("等待{}秒",delay)
-#             time.sleep(delay)
-#             logger.info("开始执行=>{}",now)
-#             run()
-#     else:
-#         run()
 
 if __name__ == "__main__":
     main()

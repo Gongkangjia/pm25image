@@ -11,10 +11,12 @@ from config import STATIONS_CNEMC
 class GeneratorBase:
     def __init__(self, df):
         self.df = df.reset_index()
+        self.df_ts = df
         self.root = Path(__file__).absolute().parent
         self.output_dir = self.root.joinpath("output")
         self.time_h = arrow.now().shift(minutes=-30)
-        self.rt_count = df.loc[df.DATETIME.dt.hour==self.time_h.hour,"PM2_5"].count()
+        self.rt_count = df.loc[df.DATETIME.dt.hour ==
+                               self.time_h.hour, "PM2_5"].count()
 
 
 class ImageGenerator(GeneratorBase):
@@ -480,7 +482,7 @@ class JiangningImage(GeneratorBase):
 
 
 class JiangningTextGenerator(GeneratorBase):
-    def __init__(self, df, is_jn=False):
+    def __init__(self, df,):
         super(JiangningTextGenerator, self).__init__(df)
         self.df = self.preprocessing(df)
 
@@ -497,6 +499,12 @@ class JiangningTextGenerator(GeneratorBase):
         rank = res_df.loc[STATIONS_CNEMC.keys()].rank(method="min").rename(
             lambda x: f"{x}_RANK", axis=1)
         res_df = res_df.join(rank)
+        from aqi import AQI
+        res_df[["AQI","AQI_RANK"]] = res_df.apply(lambda x: AQI().conc2aqi24h(x["PM25_DAY"], x["PM10_DAY"], np.nan, x["NO2_DAY"], x["MDA8"], np.nan),
+                     axis=1,
+                     result_type="expand"
+                     )[["aqi", "rank"]]
+
         return res_df
 
     @staticmethod
@@ -512,109 +520,125 @@ class JiangningTextGenerator(GeneratorBase):
         if self.rt_count < 10:
             return False
         print(self.df.T)
-        output = self.output_dir.joinpath(f"JN_{self.time_h.format('YYYY-MM-DDTHH')}.txt")
+        output = self.output_dir.joinpath(
+            f"JN_{self.time_h.format('YYYY-MM-DDTHH')}.txt")
 
         from aqi import AQI
         print(self.df)
-
-        jiangning_aqi = AQI().conc2aqi24h(
-            self.df.at["彩虹桥", "PM25_DAY"],
-            self.df.at["彩虹桥", "PM10_DAY"],
-            np.nan,
-            self.df.at["彩虹桥", "NO2_DAY"],
-            self.df.at["彩虹桥", "MDA8"],
-            np.nan
-        )
-        nanjing_aqi = AQI().conc2aqi24h(
-            self.df.at["南京", "PM25_DAY"],
-            self.df.at["南京", "PM10_DAY"],
-            np.nan,
-            self.df.at["南京", "NO2_DAY"],
-            self.df.at["南京", "MDA8"],
-            np.nan
-        )
-        print(jiangning_aqi)
-        logger.info("江宁AQI=>{}",jiangning_aqi)
-        logger.info("南京AQI=>{}",nanjing_aqi)
-
+        
         if self.time_h.hour in range(8, 17):
             res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况"
 
+        elif self.time_h.hour in range(17, 24):
+        # if 1:
+            pm25_rt = self.get_str(self.df.at["彩虹桥", "PM25_RT"])
+            pm25_rt_rank = self.get_str(self.df.at["彩虹桥", "PM25_RT_RANK"])
+            pm25_day = self.get_str(self.df.at["彩虹桥", "PM25_DAY"])
+            pm25_day_rank = self.get_str(self.df.at["彩虹桥", "PM25_DAY_RANK"])
 
+            pm10_rt = self.get_str(self.df.at["彩虹桥", "PM10_RT"])
+            pm10_rt_rank = self.get_str(self.df.at["彩虹桥", "PM10_RT_RANK"])
+            pm10_day = self.get_str(self.df.at["彩虹桥", "PM10_DAY"])
+            pm10_day_rank = self.get_str(self.df.at["彩虹桥", "PM10_DAY_RANK"])
 
+            o3_rt = self.get_str(self.df.at["彩虹桥", "O3_RT"])
+            o3_rt_rank = self.get_str(self.df.at["彩虹桥", "O3_RT_RANK"])
+            o3_day = self.get_str(self.df.at["彩虹桥", "MDA8"])
+            o3_day_rank = self.get_str(self.df.at["彩虹桥", "MDA8_RANK"])
 
-        if self.time_h.hour in range(17, 24):
-            pm25_rt = self.get_str(self.df.at["彩虹桥", "PM25_RT"]) 
-            pm25_rt_rank = self.get_str(self.df.at["彩虹桥", "PM25_RT_RANK"]) 
-            pm25_day = self.get_str(self.df.at["彩虹桥", "PM25_DAY"]) 
-            pm25_day_rank = self.get_str(self.df.at["彩虹桥", "PM25_DAY_RANK"]) 
-
-            pm10_rt = self.get_str(self.df.at["彩虹桥", "PM10_RT"]) 
-            pm10_rt_rank = self.get_str(self.df.at["彩虹桥", "PM10_RT_RANK"]) 
-            pm10_day = self.get_str(self.df.at["彩虹桥", "PM10_DAY"]) 
-            pm10_day_rank = self.get_str(self.df.at["彩虹桥", "PM10_DAY_RANK"]) 
-
-            o3_rt = self.get_str(self.df.at["彩虹桥", "O3_RT"]) 
-            o3_rt_rank = self.get_str(self.df.at["彩虹桥", "O3_RT_RANK"]) 
-            o3_day = self.get_str(self.df.at["彩虹桥", "MDA8"]) 
-            o3_day_rank = self.get_str(self.df.at["彩虹桥", "MDA8_RANK"]) 
-
-            res = (
-                f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，"            
+            rank_text = (
+                f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况，截止目前为止，"
                 f"彩虹桥站点PM2.5实时浓度为{pm25_rt}微克/立方米，排名第{pm25_rt_rank}，"
                 f"当日累计{pm25_day}微克/立方米，排名第{pm25_day_rank}； "
                 f"PM10实时浓度为{pm10_rt}微克/立方米，排名第{pm10_rt_rank}，"
                 f"当日累计{pm10_day}微克/立方米，排名第{pm10_day_rank}； "
                 f"O3实时浓度为{o3_rt}微克/立方米，排名第{o3_rt_rank}，"
                 f"当日累计{o3_day}微克/立方米，排名第{o3_day_rank}。"
-                )
+            )
             print(self.df)
 
+            # 17时后公共部分
+            site_ex_jn = ['玄武湖', '瑞金路', '奥体中心', '草场门', '山西路', '迈皋桥', '仙林大学城', '中华门','浦口', '雄州', '永阳', '老职中']
+            df_ex_jn = self.df.loc[site_ex_jn]
+            site_all =  STATIONS_CNEMC.keys()
+            df_site_all = self.df.loc[site_all]
 
-            df_site_not_good = self.df.query("PM25_DAY>70 or MDA8>150")
+            if self.time_h.hour != 23:
+                df_site_all_polluted = df_site_all.query("AQI > 100")
+                # 如果都为优良
+                if df_site_all_polluted.empty:
+                    # 有超标风险的站点
+                    df_site_potential_polluted = df_site_all.query("70<PM25_DAY<75 or 150<MDA8<160")
+                    #都没有风险的话
+                    if df_site_potential_polluted.empty:
+                        ps = f"彩虹桥国控站点空气质量等级为{self.df.at['彩虹桥','AQI_RANK']}，南京市空气质量等级为{self.df.at['南京','AQI_RANK']}。"
+                    else:#有超标风险
+                        # 彩虹桥有超标风险
+                        if "彩虹桥" in df_site_potential_polluted.index:
+                            text_site_potential_polluted = "、".join(df_site_potential_polluted.loc[df_site_potential_polluted.index!="彩虹桥"].index)[::-1].replace("、", "和", 1)[::-1]
+                            ps = f"彩虹桥站、{text_site_potential_polluted}站有超标风险。"
+                        else:# 彩虹桥没风险
+                            text_site_potential_polluted = "、".join(df_site_potential_polluted.index)[::-1].replace("、", "和", 1)[::-1]
+                            ps = f"{text_site_potential_polluted}站有超标风险,彩虹桥站暂无风险。"
+                else:#有站点超标
+                    #彩虹桥超标？
+                    if "彩虹桥" in df_site_all_polluted.index:
+                        text_site_polluted = "、".join(df_site_all_polluted.loc[df_site_all_polluted.index!="彩虹桥"].index)[::-1].replace("、", "和", 1)[::-1]
+                        ps = f"彩虹桥站、{text_site_polluted}站已超标。"
+                    else:# 其他站点超标，彩虹桥暂时没超标
+                        text_site_polluted = "、".join(df_site_all_polluted.index)[::-1].replace("、", "和", 1)[::-1]
+                        ps = f"{text_site_polluted}站已超标,彩虹桥站暂未超标。"
 
-            if df_site_not_good.empty:
-                ps = f"彩虹桥国控站点空气质量等级为{jiangning_aqi['rank']}，南京市空气质量等级为{nanjing_aqi['rank']}。"
-            
-            else:
-                #查超标风险站点
-                df_site_potential_polluted = self.df.query("70<PM25_DAY<75 or 150<MDA8<160")
-                site_ex_jn = ['玄武湖', '瑞金路', '中华门', '草场门', '山西路', '仙林大学城', '奥体中心', '浦口', '迈皋桥', '雄州', '永阳', '老职中']
-                df_ex_jn = self.df.loc[site_ex_jn]
-                df_site_exjn_potential_polluted = df_ex_jn.query("70<PM25_DAY<75 or 150<MDA8<160")
-                if "彩虹桥" in df_site_potential_polluted.index:
-                    nj_ps = "彩虹桥有一定的超标风险。"
+                    # 超标污染物为PM25,计算余量
+                    if df_site_all.query("PM25_DAY<75").empty:
+                        jn_pm25 = self.df_ts.query("NAME=='彩虹桥'")["PM25"]
+                        try:
+                            import math
+                            x = math.ceil(75*(24-jn_pm25.isna().sum()) - jn_pm25.sum())/(24-self.time_h.hour)
+                        except Exception as e:
+                            x = "-"
+                        pm25_rest = f"彩虹桥未来保良浓度为{x}微克/立方米。"
+                        ps =  f"{ps},{pm25_rest}"
+
+            if self.time_h.hour == 23:
+                df_site_exjn_polluted = df_ex_jn.query("AQI > 100")
+                # 如果不污染
+                if df_site_exjn_polluted.empty:
+                    df_aqi_rank_1 = df_site_all.query("AQI < 51")
+                    df_aqi_rank_2 = df_site_all.query("50 < AQI < 101")
+                    if df_aqi_rank_1.shape[0] == 0:
+                        ps = "各国控站均为良。" 
+                    elif df_aqi_rank_1.shape[0] < 7:
+                        text_rank_1 = "、".join(df_aqi_rank_1.index)[::-1].replace("、", "和", 1)[::-1]
+                        ps = f"{text_rank_1}为优，其他站点均为良。"
+                    elif df_aqi_rank_1.shape[0] < 13:
+                        text_rank_2 = "、".join(df_aqi_rank_2.index)[::-1].replace("、", "和", 1)[::-1]
+                        ps = f"{text_rank_2}为良，其他站点均为优。"
+                    else:
+                        ps = "各国控站均为优。"
                 else:
-                    nj_ps = "彩虹桥暂无超标风险。"
+                    text_exjn_polluted= "、".join(df_site_exjn_polluted.index)[::-1].replace("、", "和", 1)[::-1]
+                    if self.df.at["彩虹桥","AQI"]>100:
+                        jn_text = "彩虹桥站已超标"
+                    else:
+                        jn_text = "彩虹桥保良成功。"
+                    ps = f"{text_exjn_polluted}站已超标,{jn_text}"
 
-                if df_site_potential_polluted.empty:
-                    ps = ""
-                else:
-                    text_site_exjn_potential_polluted = "、".join(df_site_exjn_potential_polluted.index)[::-1].replace("、","和",1)[::-1]
-                    
-                    ps = text_site_exjn_potential_polluted + "有一定超标风险," + nj_ps
-
-            res = res + ps
-        else:
-            res= None
-
-
-        if self.time_h.hour == 23:
-            ps = "其中XXX站已超标，彩虹桥保良成功。/各国控站均为优或良/其中XXX站为优，其他站点均为良。"
-        
+            res =  rank_text + ps
         logger.info(res)
         output.write_text(res)
         return res
 
 
 if __name__ == "__main__":
-    # from crawler import Cnemc,Moji
+    from crawler import Cnemc,Moji
 
-    # c = Moji()
-    # df=c.run()
+    c = Moji()
+    c = Cnemc()
+    df=c.run()
     # df.to_csv("test.csv")
-    df = pd.read_csv("test.csv",index_col=0)
-    df["DATETIME"] = pd.to_datetime(df.DATETIME)
+    # df = pd.read_csv("test.csv", index_col=0)
+    # df["DATETIME"] = pd.to_datetime(df.DATETIME)
     g = JiangningTextGenerator(df)
     print(g.rt_count)
     g.run()

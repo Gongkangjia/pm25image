@@ -1,5 +1,7 @@
 import numpy as np
 
+import pandas as pd
+
 
 class AQI:
     def __init__(self):
@@ -94,17 +96,16 @@ class AQI:
             rank = "重度污染"
         else:
             rank = "严重污染"
-        res = {
+        res = pd.Series({
             "aqi":aqi,
             "rank":rank,
             "primary":primary,
             "primary_conc":primary_conc
-        }
+        })
 
         return res
 
 
 if __name__ == "__main__":
     res = AQI().conc2aqi24h(76,1,1,1,11,1)
-    for i in res:
-        print(i)
+    print(res)
