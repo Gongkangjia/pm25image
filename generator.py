@@ -500,10 +500,10 @@ class JiangningTextGenerator(GeneratorBase):
             lambda x: f"{x}_RANK", axis=1)
         res_df = res_df.join(rank)
         from aqi import AQI
-        res_df[["AQI","AQI_RANK"]] = res_df.apply(lambda x: AQI().conc2aqi24h(x["PM25_DAY"], x["PM10_DAY"], np.nan, x["NO2_DAY"], x["MDA8"], np.nan),
+        res_df[["AQI","AQI_RANK","EXCESS"]] = res_df.apply(lambda x: AQI().conc2aqi24h(x["PM25_DAY"], x["PM10_DAY"], np.nan, x["NO2_DAY"], x["MDA8"], np.nan),
                      axis=1,
                      result_type="expand"
-                     )[["aqi", "rank"]]
+                     )[["aqi", "rank","excess"]]
 
         return res_df
 
@@ -571,34 +571,63 @@ class JiangningTextGenerator(GeneratorBase):
                     df_site_potential_polluted = df_site_all.query("70<PM25_DAY<75 or 150<MDA8<160")
                     #都没有风险的话
                     if df_site_potential_polluted.empty:
-                        ps = f"彩虹桥国控站点空气质量等级为{self.df.at['彩虹桥','AQI_RANK']}，南京市空气质量等级为{self.df.at['南京','AQI_RANK']}。"
+                        pst = f"彩虹桥国控站点空气质量等级为{self.df.at['彩虹桥','AQI_RANK']}，南京市空气质量等级为{self.df.at['南京','AQI_RANK']}。"
                     else:#有超标风险
                         # 彩虹桥有超标风险
-                        if "彩虹桥" in df_site_potential_polluted.index:
-                            text_site_potential_polluted = "、".join(df_site_potential_polluted.loc[df_site_potential_polluted.index!="彩虹桥"].index)[::-1].replace("、", "和", 1)[::-1]
-                            ps = f"彩虹桥站、{text_site_potential_polluted}站有超标风险。"
-                        else:# 彩虹桥没风险
-                            text_site_potential_polluted = "、".join(df_site_potential_polluted.index)[::-1].replace("、", "和", 1)[::-1]
-                            ps = f"{text_site_potential_polluted}站有超标风险,彩虹桥站暂无风险。"
+                        pst = ""
+                        for species in ("PM2.5","PM10","NO2","O3"):
+                            if species == "PM2.5":
+                                psite =  df_site_all.query("70<PM25_DAY<75")
+                            elif species == "O3":
+                                psite =  df_site_all.query("150<MDA8<160")
+                            
+                            if psite.empty:
+                                ps = ""
+                            else:
+                                if "彩虹桥" in psite.index:
+                                    text_psite = "、".join(psite.loc[psite.index!="彩虹桥"].index)[::-1].replace("、", "和", 1)[::-1]
+                                    ps = f"彩虹桥站、{text_psite}站{species}有超标风险。"
+                                else:# 彩虹桥没风险
+                                    text_psite = "、".join(psite.index)[::-1].replace("、", "和", 1)[::-1]
+                                    ps = f"{text_psite}站{species}有超标风险,彩虹桥站暂无风险。"
+                            pst =  pst + ps
                 else:#有站点超标
                     #彩虹桥超标？
-                    if "彩虹桥" in df_site_all_polluted.index:
-                        text_site_polluted = "、".join(df_site_all_polluted.loc[df_site_all_polluted.index!="彩虹桥"].index)[::-1].replace("、", "和", 1)[::-1]
-                        ps = f"彩虹桥站、{text_site_polluted}站已超标。"
-                    else:# 其他站点超标，彩虹桥暂时没超标
-                        text_site_polluted = "、".join(df_site_all_polluted.index)[::-1].replace("、", "和", 1)[::-1]
-                        ps = f"{text_site_polluted}站已超标,彩虹桥站暂未超标。"
+  
+                    #筛选出当前物种超标的站点
+                    pst = ""
+                    for species in ("PM2.5","PM10","NO2","O3"):
+                        if species == "PM2.5":
+                            psite =  df_site_all.query("PM25_DAY>75")
+                        elif species == "PM10":
+                            psite =  df_site_all.query("PM10_DAY>150")
+                        elif species == "NO2":
+                            psite =  df_site_all.query("NO2_DAY>80")
+                        elif species == "O3":
+                            psite =  df_site_all.query("MDA8>160")
 
-                    # 超标污染物为PM25,计算余量
-                    if df_site_all.query("PM25_DAY<75").empty:
-                        jn_pm25 = self.df_ts.query("NAME=='彩虹桥'")["PM25"]
-                        try:
-                            import math
-                            x = math.ceil(75*(24-jn_pm25.isna().sum()) - jn_pm25.sum())/(24-self.time_h.hour)
-                        except Exception as e:
-                            x = "-"
-                        pm25_rest = f"彩虹桥未来保良浓度为{x}微克/立方米。"
-                        ps =  f"{ps},{pm25_rest}"
+                        if psite.empty:
+                            ps = ""
+                        else:
+                            if "彩虹桥" in psite.index:
+                                text_psite = "、".join(psite.loc[psite.index!="彩虹桥"].index)[::-1].replace("、", "和", 1)[::-1]
+                                ps = f"彩虹桥站、{text_psite}站{species}已超标。"
+                            else:# 其他站点超标，彩虹桥暂时没超标
+                                text_psite = "、".join(psite.index)[::-1].replace("、", "和", 1)[::-1]
+                                ps = f"{text_psite}站{species}已超标，彩虹桥站暂未超标。"
+
+                                # 超标污染物为PM25,计算余量
+                                if species == "PM2.5":
+                                    jn_pm25 = self.df_ts.query("NAME=='彩虹桥'")["PM25"]
+                                    try:
+                                        import math
+                                        x = math.ceil(75*(24-jn_pm25.isna().sum()) - jn_pm25.sum())/(24-self.time_h.hour)
+                                    except Exception as e:
+                                        x = "-"
+                                    pm25_rest = f"彩虹桥PM2.5未来保良浓度为{x}微克/立方米。"
+                                    ps =  f"{ps},{pm25_rest}"
+                                    
+                        pst = pst + ps
 
             if self.time_h.hour == 23:
                 df_site_exjn_polluted = df_ex_jn.query("AQI > 100")
@@ -617,14 +646,29 @@ class JiangningTextGenerator(GeneratorBase):
                     else:
                         ps = "各国控站均为优。"
                 else:
-                    text_exjn_polluted= "、".join(df_site_exjn_polluted.index)[::-1].replace("、", "和", 1)[::-1]
-                    if self.df.at["彩虹桥","AQI"]>100:
-                        jn_text = "彩虹桥站已超标"
-                    else:
-                        jn_text = "彩虹桥保良成功。"
-                    ps = f"{text_exjn_polluted}站已超标,{jn_text}"
+                    pst = ""
+                    for species in ("PM2.5","PM10","NO2","O3"):
+                        if species == "PM2.5":
+                            psite =  df_site_all.query("PM25_DAY>75")
+                        elif species == "PM10":
+                            psite =  df_site_all.query("PM10_DAY>150")
+                        elif species == "NO2":
+                            psite =  df_site_all.query("NO2_DAY>80")
+                        elif species == "O3":
+                            psite =  df_site_all.query("MDA8>160")
+                        
+                        if psite.empty:
+                            ps = ""
+                        else:
+                            if "彩虹桥" in psite.index:
+                                text_psite = "、".join(psite.loc[psite.index!="彩虹桥"].index)[::-1].replace("、", "和", 1)[::-1]
+                                ps = f"彩虹桥站、{text_psite}站{species}已超标。"
+                            else:# 其他站点超标，彩虹桥暂时没超标
+                                text_psite = "、".join(psite.index)[::-1].replace("、", "和", 1)[::-1]
+                                ps = f"{text_psite}站{species}已超标，彩虹桥保良成功。" 
+                        pst = pst + ps
 
-            res =  rank_text + ps
+        res =  rank_text + pst
         logger.info(res)
         output.write_text(res)
         return res

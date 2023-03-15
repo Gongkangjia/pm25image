@@ -41,10 +41,10 @@ class AQI:
         aqi = np.array(iaqi).max(axis=0)
 
         species = np.array(["PM25", "PM10", "SO2", "NO2", "O3", "CO"])
-        primary = species[np.array(iaqi).argmax(axis=0)]
-        primary_conc = conc[np.array(iaqi).argmax(axis=0),range(conc.shape[1])]
-        primary = np.where(aqi > 50, primary, None)
-        primary_conc = np.where(aqi > 50, primary_conc, None)
+        excess = species[np.array(iaqi).argmax(axis=0)]
+        excess_conc = conc[np.array(iaqi).argmax(axis=0),range(conc.shape[1])]
+        excess = np.where(aqi > 100, excess, None)
+        excess_conc = np.where(aqi > 100, excess_conc, None)
         # print(np.array(iaqi).argmax(axis=0).shape)
         if 0 <= aqi <= 50:
             rank = "优"
@@ -61,8 +61,8 @@ class AQI:
         res = {
             "aqi":aqi,
             "rank":rank,
-            "primary":primary,
-            "primary_conc":primary_conc
+            "excess":excess,
+            "excess_conc":excess_conc
         }
         return res
 
@@ -79,11 +79,11 @@ class AQI:
         conc = np.array([pm25, pm10, so2, no2, o3, co])
         aqi = np.array(iaqi).max(axis=0)
 
-        species = np.array(["PM25", "PM10", "SO2", "NO2", "O3", "CO"])
-        primary = species[np.array(iaqi).argmax(axis=0)].data
-        primary_conc = conc[np.array(iaqi).argmax(axis=0)]
-        primary = np.where(aqi > 50, primary, None)
-        primary_conc = np.where(aqi > 50, primary_conc, None)
+        species = np.array(["PM2.5", "PM10", "SO2", "NO2", "O3", "CO"])
+        excess = species[np.array(iaqi).argmax(axis=0)].data
+        excess_conc = conc[np.array(iaqi).argmax(axis=0)]
+        excess = np.where(aqi > 100, excess, None)
+        excess_conc = np.where(aqi > 100, excess_conc, None)
         if 0 <= aqi <= 50:
             rank = "优"
         elif  50 < aqi <= 100:
@@ -99,13 +99,12 @@ class AQI:
         res = pd.Series({
             "aqi":aqi,
             "rank":rank,
-            "primary":primary,
-            "primary_conc":primary_conc
+            "excess":excess,
         })
 
         return res
 
 
 if __name__ == "__main__":
-    res = AQI().conc2aqi24h(76,1,1,1,11,1)
+    res = AQI().conc2aqi24h(76,1,1,1,179,1)
     print(res)
