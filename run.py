@@ -6,11 +6,10 @@ import arrow
 import time 
 import click
 import yagmail
-from func_timeout import FunctionTimedOut
 
 from crawler import Cnemc,Moji
 from generator import ExcelGenerator,ImageGenerator,JiangningImage,JiangningTextGenerator
-from push import WeComPush, EmailPush, WechatPush
+from push import WeComPush, EmailPush
 
 
 
@@ -21,7 +20,7 @@ TODAY = arrow.now().format("YYYYMMDD")
 
 logger.add(f"logs/{TODAY}.log")
 
-
+@logger.catch()
 @click.option("-t", "--test",is_flag=True,help='test')
 @click.option("-d", "--date",help='report date')
 @click.option("-f", "--force",is_flag=True,help='Run force')
@@ -35,7 +34,7 @@ def main(date,test,force,source):
         last_tag = None
     logger.info("last_tag=>{}",last_tag)
     now = arrow.now()
-
+    1/0
     if now.minute < 30:
         datetime_tag = now.shift(hours=-1).format("YYYY-MM-DDTHH")
     else:
