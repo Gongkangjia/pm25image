@@ -626,7 +626,7 @@ class JiangningTextGenerator(GeneratorBase):
                                         x = "-"
                                     pm25_rest = f"彩虹桥PM2.5未来保良浓度为{x}微克/立方米。"
                                     ps =  f"{ps},{pm25_rest}"
-                                    
+
                         pst = pst + ps
 
             if self.time_h.hour == 23:
@@ -668,7 +668,7 @@ class JiangningTextGenerator(GeneratorBase):
                                 ps = f"{text_psite}站{species}已超标，彩虹桥保良成功。" 
                         pst = pst + ps
 
-        res =  rank_text + pst
+            res =  rank_text + pst
         logger.info(res)
         output.write_text(res)
         return res
