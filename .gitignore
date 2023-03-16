@@ -5,11 +5,9 @@ __pycache__/
 .DS_Store
 
 #User
+.history/
 logs/*
-excel/*
-rt/*
-history/*
-api/*
+output/*
 !.gitkeep
 
 # C extensions
