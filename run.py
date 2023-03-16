@@ -64,10 +64,9 @@ def main(date,test,force,source):
     jiangning_text = JiangningTextGenerator(df).run()
     print(jiangning_text)
 
-    if test and output_image and output_excel:
+    if output_image:
         push = WeComPush()
         push.send(output_image, msgtype="image",touser="GongKangJia")
-        push.send(output_excel, msgtype="file", touser="GongKangJia")
     ###邮箱推送
     if not test and output_image and output_excel:
         push  = EmailPush()
