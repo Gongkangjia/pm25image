@@ -63,7 +63,11 @@ def main(date,test,force,source):
     jnoutput_image = JiangningImage(df).run()
     jiangning_text = JiangningTextGenerator(df).run()
     print(jiangning_text)
-    
+
+    if test and output_image and output_excel:
+        push = WeComPush()
+        push.send(output_image, msgtype="image",touser="GongKangJia")
+        push.send(output_excel, msgtype="file", touser="GongKangJia")
     ###邮箱推送
     if not test and output_image and output_excel:
         push  = EmailPush()
@@ -82,9 +86,7 @@ def main(date,test,force,source):
         push.mail(f"【空气质量速报】{dt}", contents=contents, attachments=[str(output_excel)])
         datetime_tag_file.write_text(datetime_tag)
         
-    push = WeComPush()
-    push.send(output_image, msgtype="image",touser="GongKangJia")
-    push.send(output_excel, msgtype="file", touser="GongKangJia")
+
 
     if jnoutput_image and jiangning_text:
         # push.send(jnoutput_image, msgtype="image", touser="GongKangJia")
