@@ -34,7 +34,7 @@ def main(date,test,force,source):
         last_tag = None
     logger.info("last_tag=>{}",last_tag)
     now = arrow.now()
-    1/0
+
     if now.minute < 30:
         datetime_tag = now.shift(hours=-1).format("YYYY-MM-DDTHH")
     else:
