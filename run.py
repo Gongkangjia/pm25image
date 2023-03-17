@@ -49,15 +49,16 @@ def main(date,test,force,source):
 
     time_h = arrow.now().shift(minutes=-30)
     if source == "cneme":
-        df = Cnemc().run()
+        source = Cnemc()
         logger.info("数据源为CNEME")
     elif source == "moji":
-        df = Moji().run()
+        source = Moji()
         logger.info("数据源为Moji")
     else:
-        df = Cnemc().run()
+        source = Cnemc()
         logger.info("数据源为CNEME")
-
+        
+    df = source.run()
     output_image = ImageGenerator(df).run()
     output_excel = ExcelGenerator(df).run()
     jnoutput_image = JiangningImage(df).run()
@@ -85,8 +86,6 @@ def main(date,test,force,source):
         push.mail(f"【空气质量速报】{dt}", contents=contents, attachments=[str(output_excel)])
         datetime_tag_file.write_text(datetime_tag)
         
-
-
     if jnoutput_image and jiangning_text:
         # push.send(jnoutput_image, msgtype="image", touser="GongKangJia")
         # push.send(jnoutput_image, msgtype="image", touser="noreply")

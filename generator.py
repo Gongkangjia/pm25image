@@ -523,13 +523,11 @@ class JiangningTextGenerator(GeneratorBase):
         output = self.output_dir.joinpath(
             f"JN_{self.time_h.format('YYYY-MM-DDTHH')}.txt")
 
-        from aqi import AQI
-        print(self.df)
-        
-        if self.time_h.hour in range(8, 17):
+        from aqi import AQI        
+        if self.time_h.hour in range(1, 17):
             res = f"南京市各国控站点{self.time_h.hour}时空气质量指标相关情况"
 
-        elif self.time_h.hour in range(17, 24):
+        elif self.time_h.hour in (0,17,18,19,20,21,22,23):
         # if 1:
             pm25_rt = self.get_str(self.df.at["彩虹桥", "PM25_RT"])
             pm25_rt_rank = self.get_str(self.df.at["彩虹桥", "PM25_RT_RANK"])
